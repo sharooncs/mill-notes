@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mill Notes</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mill Notes">
+<meta name="theme-color" content="#15171C">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+/* Layout: one-column phone app. Home = "now" card + big actions + day list. Meeting = header, actions, notes feed. */
+:root{
+  --bg:#15171C; --panel:#1F2229; --panel2:#272B34; --line:#343945;
+  --fg:#F2F3F5; --mute:#9AA1AD; --dim:#6B7280;
+  --amber:#F6A623; --amber-ink:#1B1406; --rec:#E0443A; --ok:#3FB97A; --blue:#5BA4F5;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:17px;line-height:1.35}
+body{overscroll-behavior-y:none;-webkit-text-size-adjust:100%}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;margin:0;cursor:pointer;touch-action:manipulation}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+textarea,input{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.sr{position:absolute;left:-9999px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:5;background:rgba(21,23,28,.92);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  padding:calc(var(--sat) + 8px) max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left));
+  display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.top .back{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;font-size:22px;margin-left:-8px}
+.top h1{font-size:17px;font-weight:700;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top .who{font-size:13px;color:var(--amber);font-weight:700;padding:6px 10px;border-radius:999px;background:rgba(246,166,35,.12)}
+.net{width:8px;height:8px;border-radius:50%;background:var(--dim)} .net.on{background:var(--ok)}
+
+main{padding:12px max(16px,env(safe-area-inset-right)) calc(var(--sab) + 28px) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px}
+
+/* now card */
+.now{background:var(--panel);border-radius:18px;padding:16px;border:1px solid var(--line)}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700}
+.now h2{margin:4px 0 2px;font-size:24px;line-height:1.15;text-wrap:balance}
+.now .meta{color:var(--mute);font-size:15px}
+.num{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--amber);color:var(--amber-ink);font-weight:800;font-size:13px;font-family:var(--mono);vertical-align:-6px;margin-right:6px}
+
+/* big actions */
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:84px;border-radius:16px;background:var(--panel2);font-size:13px;font-weight:700;color:var(--fg);border:1px solid var(--line)}
+.act svg{width:28px;height:28px;fill:currentColor}
+.act.rec{background:var(--rec);border-color:var(--rec);color:#fff}
+.act:active{transform:scale(.97);filter:brightness(1.1)}
+
+/* check-in */
+.checkin{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:14px;font-weight:700;font-size:16px}
+.btn.primary{background:var(--amber);color:var(--amber-ink)}
+.btn.ghost{background:var(--panel2);color:var(--fg);border:1px solid var(--line)}
+.btn.danger{background:rgba(224,68,58,.15);color:#FF8A80}
+.btn.small{min-height:38px;padding:0 12px;font-size:14px;border-radius:11px}
+.btn:active{filter:brightness(1.1);transform:scale(.98)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--panel2);color:var(--mute);border:1px solid var(--line)}
+.chip.ok{background:rgba(63,185,122,.14);color:var(--ok);border-color:transparent}
+.chip.amber{background:rgba(246,166,35,.14);color:var(--amber);border-color:transparent}
+
+/* day list */
+.day h3{margin:4px 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700;display:flex;justify-content:space-between}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line);margin-bottom:8px}
+.row .num{flex:none;width:32px;height:32px;font-size:14px;margin:0}
+.row .t{flex:1;min-width:0}
+.row .t b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t span{font-size:13px;color:var(--mute);font-family:var(--mono)}
+.row .counts{display:flex;gap:6px;color:var(--mute);font-size:12px;font-family:var(--mono);align-items:center}
+.row .counts i{font-style:normal;display:inline-flex;align-items:center;gap:3px}
+.row .counts svg{width:13px;height:13px;fill:currentColor}
+.row.active{border-color:var(--amber)}
+.row.done .num{background:var(--ok);color:#06220f}
+.row .chev{color:var(--dim)}
+
+/* meeting page */
+.mhead{background:var(--panel);border-radius:18px;padding:16px;border:1px solid var(--line)}
+.mhead h2{margin:0 0 4px;font-size:26px;line-height:1.1;text-wrap:balance}
+.mhead .meta{color:var(--mute);font-size:15px;line-height:1.5}
+.mhead .meta b{color:var(--fg)}
+.phone{font-family:var(--mono);color:var(--blue);white-space:nowrap}
+
+.section-h{display:flex;align-items:baseline;justify-content:space-between;margin:4px 0 -4px}
+.section-h h3{margin:0;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700}
+
+/* composer */
+.composer{background:var(--panel);border-radius:16px;padding:12px;border:1px solid var(--amber)}
+textarea.note{width:100%;min-height:110px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:17px;resize:vertical}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.tag{padding:8px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);font-size:14px;font-weight:700;color:var(--mute)}
+.tag.on{background:rgba(246,166,35,.18);color:var(--amber);border-color:var(--amber)}
+.rowbtns{display:flex;gap:10px;justify-content:flex-end}
+
+/* notes feed */
+.note-card{background:var(--panel);border-radius:16px;padding:12px;border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.note-card .hd{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--mute)}
+.note-card .hd .kind{display:inline-flex;align-items:center;gap:5px;font-weight:700;color:var(--fg)}
+.note-card .hd .kind svg{width:16px;height:16px;fill:currentColor}
+.note-card .hd .sp{flex:1}
+.note-card .by{font-weight:700;color:var(--amber)}
+.note-card img,.note-card video{width:100%;max-height:60vh;object-fit:contain;border-radius:12px;background:#000}
+.note-card audio{width:100%}
+.note-card p{margin:0;white-space:pre-wrap;word-break:break-word}
+.marks{display:flex;flex-wrap:wrap;gap:6px}
+.mark{font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:8px;background:var(--panel2);color:var(--mute)}
+.mark b{color:var(--amber)}
+.note-card .ft{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.transcript{width:100%;min-height:80px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:15px}
+.tagline{display:flex;gap:6px;flex-wrap:wrap}
+.tagline span{font-size:12px;font-weight:700;color:var(--amber);background:rgba(246,166,35,.12);padding:3px 8px;border-radius:999px}
+
+/* recording overlay */
+#rec{position:fixed;inset:0;z-index:50;background:#0E0F12;display:flex;flex-direction:column;padding:calc(var(--sat) + 18px) max(20px,env(safe-area-inset-right)) calc(var(--sab) + 20px) max(20px,env(safe-area-inset-left))}
+#rec .rh{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:14px}
+#rec .dot{width:12px;height:12px;border-radius:50%;background:var(--rec);animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){#rec .dot{animation:none}}
+#rec .title{font-size:22px;font-weight:700;margin-top:10px;text-wrap:balance}
+#rec .timer{font-family:var(--mono);font-size:64px;font-weight:700;letter-spacing:.02em;margin:18px 0 6px;font-variant-numeric:tabular-nums}
+#rec canvas{width:100%;height:56px;display:block;border-radius:10px;background:var(--panel)}
+#rec .marklist{flex:1;overflow:auto;margin:12px 0;display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:14px;color:var(--mute)}
+#rec .marklist div b{color:var(--amber)}
+#rec .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+#rec .quick button{height:48px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);font-weight:700;font-size:14px}
+#rec .quick button:active{background:rgba(246,166,35,.2);border-color:var(--amber)}
+#rec .bottom{display:flex;gap:12px;align-items:center}
+#rec .markbtn{flex:1;height:72px;border-radius:18px;background:var(--amber);color:var(--amber-ink);font-size:20px;font-weight:800}
+#rec .stop{width:72px;height:72px;border-radius:18px;background:var(--rec);display:flex;align-items:center;justify-content:center}
+#rec .stop i{display:block;width:26px;height:26px;background:#fff;border-radius:4px}
+#rec .warn{font-size:13px;color:var(--mute);text-align:center;margin-top:10px}
+
+/* first run / settings */
+.card{background:var(--panel);border-radius:18px;padding:16px;border:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.card h2{margin:0;font-size:22px}
+.card p{margin:0;color:var(--mute)}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pick button{height:64px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);font-size:18px;font-weight:700}
+.pick button.on{background:var(--amber);color:var(--amber-ink);border-color:var(--amber)}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:15px;color:var(--mute)}
+.kv b{color:var(--fg);font-family:var(--mono)}
+
+#toast{position:fixed;left:50%;bottom:calc(var(--sab) + 24px);transform:translateX(-50%);background:#fff;color:#111;padding:10px 16px;border-radius:999px;font-weight:700;font-size:14px;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.4);max-width:90vw;text-align:center}
+#overlay{position:fixed;inset:0;z-index:40;background:var(--bg);padding:calc(var(--sat) + 24px) 20px calc(var(--sab) + 24px);display:flex;flex-direction:column;justify-content:center}
+.empty{color:var(--mute);text-align:center;padding:18px 0;font-size:15px}
+.banner{background:rgba(91,164,245,.12);color:var(--blue);border-radius:12px;padding:10px 12px;font-size:14px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button class="back" id="back" hidden aria-label="Back">‹</button>
+  <h1 id="title">Mill Notes</h1>
+  <span class="net" id="net" title="Connection"></span>
+  <button class="who" id="who">—</button>
+</header>
+
+<main id="view"></main>
+
+<!-- recording overlay -->
+<div id="rec" hidden>
+  <div class="rh"><span class="dot"></span><span id="rec-by">Recording</span><span style="flex:1"></span><span id="rec-size"></span></div>
+  <div class="title" id="rec-title"></div>
+  <div class="timer" id="rec-timer">00:00</div>
+  <canvas id="rec-meter" width="600" height="112"></canvas>
+  <div class="marklist" id="rec-marks"></div>
+  <div class="quick" id="rec-quick">
+    <button data-tag="Price">Price</button><button data-tag="Spec">Spec</button><button data-tag="Lead time">Lead time</button><button data-tag="MOQ">MOQ</button>
+    <button data-tag="Sample">Sample</button><button data-tag="Follow-up">Follow-up</button><button data-tag="Question">Question</button><button data-tag="Important">Important</button>
+  </div>
+  <div class="bottom">
+    <button class="markbtn" id="rec-mark">Mark moment</button>
+    <button class="stop" id="rec-stop" aria-label="Stop and save"><i></i></button>
+  </div>
+  <div class="warn">Keep the screen on. Recording stops if the phone locks or you switch apps.</div>
+</div>
+
+<!-- first-run -->
+<div id="overlay" hidden>
+  <div class="card">
+    <h2>Who's using this phone?</h2>
+    <p>Every note is stamped with the name. You can change it later from the top-right button.</p>
+    <div class="pick"><button data-u="Sharoon">Sharoon</button><button data-u="Naveed">Naveed</button></div>
+  </div>
+</div>
+
+<input type="file" id="in-photo" accept="image/*" capture="environment" class="sr" multiple>
+<input type="file" id="in-video" accept="video/*" capture="environment" class="sr">
+<input type="file" id="in-import" accept="image/*,video/*,audio/*" class="sr" multiple>
+<div id="toast" hidden></div>
+
+<script>
+/* ---------- data ---------- */
+const MEETINGS = [
+ {id:1, day:'02', dow:'Tue', date:'2026-10-27', time:'08:30–10:30', name:'HongYe Factory', detail:'No. 21 Liumaiwan Rd', contact:'Troy', phone:'+86 138 1547 5565'},
+ {id:2, day:'02', dow:'Tue', date:'2026-10-27', time:'10:30–12:00', name:'Sachsen Furnaces', detail:'At HongYe office · Spec S12-R3'},
+ {id:3, day:'02', dow:'Tue', date:'2026-10-27', time:'13:30–16:00', name:'Dingsheng Aluminium', detail:'Jingkou Park · 100-mill plant'},
+ {id:4, day:'02', dow:'Tue', date:'2026-10-27', time:'16:15–18:00', name:'China Energy Foil', detail:'Battery foil cleanroom'},
+ {id:5, day:'03', dow:'Wed', date:'2026-10-28', time:'09:15–11:30', name:'Curve Roll Grinder', detail:'Changzhou · Spec S09 & S10'},
+ {id:6, day:'03', dow:'Wed', date:'2026-10-28', time:'13:30–15:30', name:'Longray Furnaces', detail:'Suzhou', contact:'Zhang', phone:'+86 189 5110 8961'},
+ {id:7, day:'03', dow:'Wed', date:'2026-10-28', time:'18:30–20:00', name:'Shanghai Fronject', detail:'At Primus Hotel · OMR + ROR S13'},
+ {id:8, day:'04', dow:'Thu', date:'2026-10-29', time:'13:35–14:30', name:'Chinalco Foil Plant', detail:'Tour plant first · leave by 14:30'},
+ {id:9, day:'04', dow:'Thu', date:'2026-10-29', time:'14:45–15:35', name:'CNPT Luoyang HQ', detail:'Leave 15:35 sharp for the station', contact:'Wang', phone:'+86 139 3880 4883'},
+ {id:10,day:'05', dow:'Fri', date:'2026-10-30', time:'08:45–11:00', name:'Zhuoshen Mill Factory', detail:'Zhuozhou', contact:'Tiger', phone:'+86 134 6312 6059'},
+ {id:11,day:'05', dow:'Fri', date:'2026-10-30', time:'11:15–12:45', name:'NCA Battery Foil Plant', detail:'Robotic spool & roll handling'},
+ {id:12,day:'05', dow:'Fri', date:'2026-10-30', time:'14:00–16:30', name:'NCHM Office & Factory', detail:'Zhuozhou', contact:'Vivien', phone:'+86 136 6130 3116'},
+];
+const DAYLABEL = {'02':'Tue 27 Oct · Zhenjiang','03':'Wed 28 Oct · Changzhou → Suzhou → Shanghai','04':'Thu 29 Oct · Luoyang','05':'Fri 30 Oct · Zhuozhou'};
+const TAGS = ['Price','Spec','Lead time','MOQ','Sample','Follow-up','Question','Important'];
+const ICON = {
+  mic:'<svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4zm6-4a1 1 0 1 1 2 0 8 8 0 0 1-7 7.94V21h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.06A8 8 0 0 1 4 11a1 1 0 1 1 2 0 6 6 0 0 0 12 0z"/></svg>',
+  cam:'<svg viewBox="0 0 24 24"><path d="M9 3h6l1.5 2H20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3.5zm3 5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg>',
+  vid:'<svg viewBox="0 0 24 24"><path d="M3 6h12a2 2 0 0 1 2 2v2.5l4-2.5v8l-4-2.5V16a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>',
+  txt:'<svg viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 5h16v2H4zm0 5h10v2H4zm12.5-1.5 3 3L12 23H9v-3z"/></svg>',
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7zm0 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>',
+};
+
+/* ---------- IndexedDB ---------- */
+let dbp = null;
+function idb(){
+  if (dbp) return dbp;
+  dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('millnotes', 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      d.createObjectStore('meetings', {keyPath:'id'});
+      const n = d.createObjectStore('notes', {keyPath:'id', autoIncrement:true});
+      n.createIndex('meetingId','meetingId');
+      const p = d.createObjectStore('parts', {keyPath:'id', autoIncrement:true});
+      p.createIndex('rec','rec');
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return dbp;
+}
+function tx(store, mode, fn){
+  return idb().then(d => new Promise((res, rej) => {
+    const t = d.transaction(store, mode); const s = t.objectStore(store);
+    let out; try { out = fn(s); } catch(e){ rej(e); return; }
+    t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  }));
+}
+const getAll = (store, index, key) => tx(store, 'readonly', s => index ? s.index(index).getAll(key) : s.getAll());
+const put = (store, v) => tx(store, 'readwrite', s => s.put(v));
+const add = (store, v) => tx(store, 'readwrite', s => s.add(v));
+const del = (store, k) => tx(store, 'readwrite', s => s.delete(k));
+const get = (store, k) => tx(store, 'readonly', s => s.get(k));
+
+/* ---------- state ---------- */
+const $ = (q, el=document) => el.querySelector(q);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let user = null; try { user = localStorage.getItem('mn.user'); } catch(e){}
+let meetingState = {}; // id -> {checkedIn, at, lat, lng, summary}
+let noteCache = {};    // meetingId -> notes[]
+let urls = [];         // object URLs to revoke on route change
+
+function toast(msg, ms=2200){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => t.hidden = true, ms); }
+function fmtTime(d){ return new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function fmtDur(s){ s = Math.round(s); const m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
+function fmtBytes(b){ return b > 1e9 ? (b/1e9).toFixed(2)+' GB' : b > 1e6 ? (b/1e6).toFixed(1)+' MB' : Math.round(b/1e3)+' KB'; }
+function mins(hhmm){ const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
+
+function currentMeeting(){
+  const now = new Date();
+  const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const cur = now.getHours()*60 + now.getMinutes();
+  const todays = MEETINGS.filter(m => m.date === today);
+  for (const m of todays){ const [a,b] = m.time.split('–'); if (cur >= mins(a)-30 && cur <= mins(b)+30) return {m, why:'Now'}; }
+  for (const m of todays){ const [a] = m.time.split('–'); if (cur < mins(a)) return {m, why:'Next'}; }
+  const future = MEETINGS.filter(m => m.date > today);
+  if (future.length) return {m:future[0], why:'Next'};
+  if (todays.length) return {m:todays[todays.length-1], why:'Latest'};
+  return {m:MEETINGS[0], why:'First visit'};
+}
+
+async function loadState(){
+  const rows = await getAll('meetings'); meetingState = {}; rows.forEach(r => meetingState[r.id] = r);
+  const notes = await getAll('notes'); noteCache = {}; notes.forEach(n => (noteCache[n.meetingId] ||= []).push(n));
+}
+
+/* ---------- router ---------- */
+window.addEventListener('hashchange', render);
+async function render(){
+  urls.forEach(u => URL.revokeObjectURL(u)); urls = [];
+  await loadState();
+  const h = location.hash;
+  $('#who').textContent = user || 'Name';
+  if (h === '#settings') return renderSettings();
+  const mm = h.match(/^#m(\d+)$/);
+  if (mm) return renderMeeting(Number(mm[1]));
+  renderHome();
+}
+function setTop(title, back){ $('#title').textContent = title; $('#back').hidden = !back; }
+$('#back').onclick = () => { location.hash = ''; };
+$('#who').onclick = () => { location.hash = '#settings'; };
+
+/* ---------- views ---------- */
+function actionsHtml(id){
+  return `<div class="actions">
+    <button class="act rec" data-a="rec" data-m="${id}">${ICON.mic}Record</button>
+    <button class="act" data-a="photo" data-m="${id}">${ICON.cam}Photo</button>
+    <button class="act" data-a="video" data-m="${id}">${ICON.vid}Video</button>
+    <button class="act" data-a="text" data-m="${id}">${ICON.txt}Note</button>
+  </div>`;
+}
+function counts(id){
+  const ns = noteCache[id] || []; const c = {audio:0, photo:0, video:0, text:0};
+  ns.forEach(n => c[n.type]++); return c;
+}
+function checkinHtml(m){
+  const st = meetingState[m.id];
+  if (st && st.checkedIn) return `<div class="checkin"><span class="chip ok">✓ Checked in ${fmtTime(st.at)}${st.lat ? ' · GPS' : ''}</span><button class="btn ghost small" data-a="undo" data-m="${m.id}">Undo</button></div>`;
+  return `<div class="checkin"><span class="chip">Not checked in</span><button class="btn primary" data-a="checkin" data-m="${m.id}">${ICON.pin.replace('<svg','<svg width="18" height="18" fill="currentColor"')} Check in</button></div>`;
+}
+
+function renderHome(){
+  setTop('Mill Notes', false);
+  const {m, why} = currentMeeting();
+  const days = ['02','03','04','05'];
+  let html = `<section class="now"><div class="eyebrow">${why} · ${m.dow} ${m.time}</div>
+    <h2><span class="num">${String(m.id).padStart(2,'0')}</span>${esc(m.name)}</h2>
+    <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <span class="phone">${esc(m.phone)}</span>` : ''}</div>
+    <div style="margin-top:12px">${actionsHtml(m.id)}</div>${checkinHtml(m)}
+    <div style="margin-top:12px;text-align:right"><a href="#m${m.id}" class="btn ghost small" style="text-decoration:none">Open visit ›</a></div>
+  </section>`;
+  for (const d of days){
+    const ms = MEETINGS.filter(x => x.day === d);
+    html += `<section class="day"><h3><span>${DAYLABEL[d]}</span></h3>` + ms.map(x => {
+      const st = meetingState[x.id]; const c = counts(x.id);
+      return `<a href="#m${x.id}" class="row ${st && st.checkedIn ? 'done' : ''} ${x.id === m.id ? 'active' : ''}" style="text-decoration:none;color:inherit">
+        <span class="num">${String(x.id).padStart(2,'0')}</span>
+        <span class="t"><b>${esc(x.name)}</b><span>${x.time}</span></span>
+        <span class="counts">${c.audio?`<i>${ICON.mic}${c.audio}</i>`:''}${c.photo?`<i>${ICON.cam}${c.photo}</i>`:''}${c.video?`<i>${ICON.vid}${c.video}</i>`:''}${c.text?`<i>${ICON.txt}${c.text}</i>`:''}</span>
+        <span class="chev">›</span></a>`;
+    }).join('') + `</section>`;
+  }
+  $('#view').innerHTML = html;
+}
+
+function renderMeeting(id){
+  const m = MEETINGS.find(x => x.id === id); if (!m) { location.hash = ''; return; }
+  setTop(`${String(id).padStart(2,'0')} · ${m.name}`, true);
+  const st = meetingState[id] || {};
+  const notes = (noteCache[id] || []).slice().sort((a,b) => b.createdAt - a.createdAt);
+  let html = `<section class="mhead"><div class="eyebrow">Visit ${String(id).padStart(2,'0')} · ${m.dow} ${m.time}</div>
+    <h2>${esc(m.name)}</h2>
+    <div class="meta">${esc(m.detail)}${m.contact ? `<br><b>${esc(m.contact)}</b> <span class="phone">${esc(m.phone)}</span>` : ''}</div>
+    ${checkinHtml(m)}</section>
+    ${actionsHtml(id)}
+    <div id="composer-slot"></div>
+    <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span class="chip" id="sum-state" style="font-size:11px">${st.summary ? 'saved' : ''}</span></div>
+      <textarea class="note" id="summary" placeholder="Two lines after the visit: what they offer, price indication, next step…">${esc(st.summary || '')}</textarea></section>
+    <div class="section-h"><h3>Notes (${notes.length})</h3><button class="btn ghost small" data-a="export" data-m="${id}">Export visit</button></div>`;
+  if (!notes.length) html += `<div class="empty">Nothing yet. Tap Record as the meeting starts.</div>`;
+  html += notes.map(noteHtml).join('');
+  html += `<div style="text-align:center;margin-top:6px"><button class="btn ghost small" data-a="import" data-m="${id}">Import from camera roll</button></div>`;
+  $('#view').innerHTML = html;
+  const sum = $('#summary'); let sh;
+  sum.addEventListener('input', () => { clearTimeout(sh); $('#sum-state').textContent = '…'; sh = setTimeout(async () => {
+    const cur = meetingState[id] || {id}; cur.summary = sum.value; meetingState[id] = cur; await put('meetings', cur); $('#sum-state').textContent = 'saved'; }, 500); });
+}
+function noteHtml(n){
+  const k = {audio:'mic', photo:'cam', video:'vid', text:'txt'}[n.type];
+  let body = '';
+  if (n.type === 'text') body = `<p>${esc(n.text)}</p>`;
+  if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">`; }
+  if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>`; }
+  if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" controls preload="metadata"></audio>`
+    + (n.marks && n.marks.length ? `<div class="marks">${n.marks.map(x => `<span class="mark"><b>${fmtDur(x.t)}</b> ${esc(x.tag)}</span>`).join('')}</div>` : '')
+    + `<details><summary style="font-size:13px;color:var(--mute);cursor:pointer">Transcript${n.transcript ? ' ✓' : ''}</summary>
+       <textarea class="transcript" data-tr="${n.id}" placeholder="Paste the transcript here (Shortcuts › Transcribe Audio), or leave for later.">${esc(n.transcript || '')}</textarea></details>`; }
+  if (n.type !== 'text' && n.text) body += `<p style="color:var(--mute);font-size:15px">${esc(n.text)}</p>`;
+  const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
+  const extra = n.type === 'audio' ? ` · ${fmtDur(n.duration || 0)}${n.recovered ? ' · recovered' : ''}` : n.blob ? ` · ${fmtBytes(n.blob.size)}` : '';
+  return `<article class="note-card" data-id="${n.id}">
+    <div class="hd"><span class="kind">${ICON[k]}${n.type}</span><span>${fmtTime(n.createdAt)}${extra}</span><span class="sp"></span><span class="by">${esc(n.by || '')}</span></div>
+    ${tags}${body}
+    <div class="ft">${n.blob ? `<button class="btn ghost small" data-a="share" data-n="${n.id}">Share</button>` : ''}<button class="btn ghost small" data-a="caption" data-n="${n.id}">${n.type === 'text' ? 'Edit' : 'Caption'}</button><button class="btn danger small" data-a="del" data-n="${n.id}">Delete</button></div>
+  </article>`;
+}
+
+async function renderSettings(){
+  setTop('Settings', true);
+  let est = null; try { est = await navigator.storage.estimate(); } catch(e){}
+  const all = Object.values(noteCache).flat(); const bytes = all.reduce((s,n) => s + (n.blob ? n.blob.size : 0), 0);
+  $('#view').innerHTML = `
+    <section class="card"><h2>Who's recording</h2><div class="pick"><button data-u="Sharoon" class="${user==='Sharoon'?'on':''}">Sharoon</button><button data-u="Naveed" class="${user==='Naveed'?'on':''}">Naveed</button></div></section>
+    <section class="card"><h2>Storage on this phone</h2>
+      <div class="kv"><span>Notes</span><b>${all.length}</b></div>
+      <div class="kv"><span>Media stored</span><b>${fmtBytes(bytes)}</b></div>
+      ${est ? `<div class="kv"><span>Space available</span><b>${fmtBytes((est.quota||0) - (est.usage||0))}</b></div>` : ''}
+      <p>Everything stays on this phone until you export it. Don't delete the app from the Home Screen before exporting: that deletes the notes too.</p></section>
+    <section class="card"><h2>Export</h2>
+      <p>Per visit: open the visit and tap <b>Export visit</b>. It opens the share sheet with the audio, photos, video and a text file of the notes. Send to Files, AirDrop, Claude, or a Shortcut.</p>
+      <button class="btn primary" data-a="exporttext">Copy all notes as text</button>
+      <button class="btn ghost" data-a="exportjson">Share notes as JSON</button></section>
+    <section class="card"><h2>Chinese transcription on the phone</h2>
+      <p>Open an audio note › <b>Share</b> › pick your <b>Transcribe</b> shortcut (Shortcuts app: Transcribe Audio → Translate Text). Paste the result into the note's Transcript box. Works offline.</p></section>
+    <section class="card"><div class="kv"><span>App version</span><b>${APP_VERSION}</b></div><div class="kv"><span>Connection</span><b id="net-txt">${navigator.onLine ? 'online' : 'offline'}</b></div></section>`;
+}
+
+/* ---------- actions ---------- */
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-a],[data-u]'); if (!b) return;
+  if (b.dataset.u){ user = b.dataset.u; try { localStorage.setItem('mn.user', user); } catch(err){} $('#overlay').hidden = true; render(); return; }
+  const a = b.dataset.a, mid = Number(b.dataset.m), nid = Number(b.dataset.n);
+  if (a === 'rec') return startRecording(mid);
+  if (a === 'photo'){ pendingMeeting = mid; $('#in-photo').click(); return; }
+  if (a === 'video'){ pendingMeeting = mid; $('#in-video').click(); return; }
+  if (a === 'import'){ pendingMeeting = mid; $('#in-import').click(); return; }
+  if (a === 'text') return openComposer(mid);
+  if (a === 'checkin') return checkIn(mid);
+  if (a === 'undo'){ const cur = meetingState[mid] || {id:mid}; cur.checkedIn = false; await put('meetings', cur); render(); return; }
+  if (a === 'share') return shareNote(nid);
+  if (a === 'caption') return captionNote(nid);
+  if (a === 'del') return deleteNote(nid, b);
+  if (a === 'export') return exportMeeting(mid);
+  if (a === 'exporttext') return exportText();
+  if (a === 'exportjson') return exportJson();
+});
+document.addEventListener('change', async (e) => {
+  const t = e.target; if (!t.matches('#in-photo,#in-video,#in-import')) return;
+  const files = [...t.files]; t.value = '';
+  for (const f of files){
+    const type = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : 'photo';
+    await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: Date.now(), by: user, text:'', tags:[], name: f.name});
+  }
+  toast(files.length === 1 ? 'Saved' : `Saved ${files.length} files`);
+  if (!meetingState[pendingMeeting]?.checkedIn) await checkIn(pendingMeeting, true);
+  render();
+});
+document.addEventListener('input', (e) => {
+  const t = e.target; if (!t.matches('textarea[data-tr]')) return;
+  clearTimeout(t._h); t._h = setTimeout(async () => { const n = await get('notes', Number(t.dataset.tr)); if (n){ n.transcript = t.value; await put('notes', n); } }, 600);
+});
+let pendingMeeting = null;
+
+async function checkIn(mid, silent){
+  const cur = meetingState[mid] || {id: mid};
+  cur.checkedIn = true; cur.at = Date.now(); cur.by = user;
+  await put('meetings', cur); meetingState[mid] = cur;
+  if (!silent) { toast('Checked in'); render(); }
+  if ('geolocation' in navigator) navigator.geolocation.getCurrentPosition(async p => {
+    cur.lat = p.coords.latitude; cur.lng = p.coords.longitude; cur.acc = p.coords.accuracy; await put('meetings', cur); if (!silent) render();
+  }, () => {}, {enableHighAccuracy:false, timeout:8000, maximumAge:60000});
+}
+
+function openComposer(mid, existing){
+  if (location.hash !== `#m${mid}`){ location.hash = `#m${mid}`; setTimeout(() => openComposer(mid, existing), 150); return; }
+  const slot = $('#composer-slot'); if (!slot) return;
+  const sel = new Set(existing ? existing.tags || [] : []);
+  slot.innerHTML = `<section class="composer"><textarea class="note" id="ntext" placeholder="Type or dictate (mic key on the keyboard works offline for English)…">${esc(existing ? existing.text : '')}</textarea>
+    <div class="tags">${TAGS.map(t => `<button class="tag ${sel.has(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+    <div class="rowbtns"><button class="btn ghost" id="ncancel">Cancel</button><button class="btn primary" id="nsave">Save note</button></div></section>`;
+  slot.querySelectorAll('.tag').forEach(b => b.onclick = () => { b.classList.toggle('on'); const t = b.dataset.t; sel.has(t) ? sel.delete(t) : sel.add(t); });
+  const ta = $('#ntext'); ta.focus();
+  $('#ncancel').onclick = () => slot.innerHTML = '';
+  $('#nsave').onclick = async () => {
+    const text = ta.value.trim(); if (!text && !sel.size) { slot.innerHTML = ''; return; }
+    if (existing){ existing.text = text; existing.tags = [...sel]; await put('notes', existing); }
+    else await add('notes', {meetingId: mid, type:'text', text, tags:[...sel], createdAt: Date.now(), by: user});
+    if (!meetingState[mid]?.checkedIn) await checkIn(mid, true);
+    toast('Saved'); render();
+  };
+  slot.scrollIntoView({block:'center'});
+}
+async function captionNote(nid){
+  const n = await get('notes', nid); if (!n) return;
+  if (n.type === 'text') return openComposer(n.meetingId, n);
+  const card = document.querySelector(`.note-card[data-id="${nid}"]`);
+  if (card.querySelector('.cap')) return;
+  const box = document.createElement('div'); box.className = 'cap';
+  box.innerHTML = `<textarea class="transcript" placeholder="Caption: what is this?">${esc(n.text || '')}</textarea><div class="tags">${TAGS.map(t => `<button class="tag ${(n.tags||[]).includes(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div><div class="rowbtns"><button class="btn primary small">Save</button></div>`;
+  card.insertBefore(box, card.querySelector('.ft'));
+  const sel = new Set(n.tags || []);
+  box.querySelectorAll('.tag').forEach(b => b.onclick = () => { b.classList.toggle('on'); const t = b.dataset.t; sel.has(t) ? sel.delete(t) : sel.add(t); });
+  box.querySelector('.btn').onclick = async () => { n.text = box.querySelector('textarea').value.trim(); n.tags = [...sel]; await put('notes', n); toast('Saved'); render(); };
+}
+async function deleteNote(nid, btn){
+  if (btn.dataset.armed){ await del('notes', nid); toast('Deleted'); render(); return; }
+  btn.dataset.armed = '1'; btn.textContent = 'Tap again to delete'; setTimeout(() => { if (btn.isConnected){ delete btn.dataset.armed; btn.textContent = 'Delete'; } }, 2500);
+}
+
+/* ---------- export / share ---------- */
+function ext(n){ if (n.type === 'audio') return (n.blob.type.includes('mp4') || n.blob.type.includes('aac')) ? 'm4a' : n.blob.type.includes('ogg') ? 'ogg' : 'webm';
+  if (n.name && n.name.includes('.')) return n.name.split('.').pop(); return n.type === 'photo' ? 'jpg' : n.type === 'video' ? 'mp4' : 'bin'; }
+function fileFor(n){ const m = MEETINGS.find(x => x.id === n.meetingId); const d = new Date(n.createdAt);
+  const stamp = d.toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/(\d{8})(\d{4})/,'$1-$2');
+  const name = `V${String(n.meetingId).padStart(2,'0')}_${m.name.replace(/[^A-Za-z0-9]+/g,'')}_${n.type}_${stamp}_${n.by||''}.${ext(n)}`;
+  return new File([n.blob], name, {type: n.blob.type || 'application/octet-stream'}); }
+function meetingText(id){
+  const m = MEETINGS.find(x => x.id === id); const st = meetingState[id] || {};
+  const notes = (noteCache[id] || []).slice().sort((a,b) => a.createdAt - b.createdAt);
+  let s = `# Visit ${String(id).padStart(2,'0')} · ${m.name}\n${m.dow} ${m.date} ${m.time} · ${m.detail}${m.contact ? ` · ${m.contact} ${m.phone}` : ''}\n`;
+  s += st.checkedIn ? `Checked in: ${new Date(st.at).toLocaleString()}${st.lat ? ` · GPS ${st.lat.toFixed(5)}, ${st.lng.toFixed(5)} (±${Math.round(st.acc||0)} m)` : ''} · by ${st.by||''}\n` : `Not checked in\n`;
+  if (st.summary) s += `\n## Summary\n${st.summary}\n`;
+  s += `\n## Notes (${notes.length})\n`;
+  for (const n of notes){
+    s += `\n### ${fmtTime(n.createdAt)} · ${n.type}${n.by ? ` · ${n.by}` : ''}${n.tags && n.tags.length ? ` · [${n.tags.join(', ')}]` : ''}\n`;
+    if (n.blob) s += `File: ${fileFor(n).name}${n.type === 'audio' ? ` · ${fmtDur(n.duration||0)}` : ''}\n`;
+    if (n.marks && n.marks.length) s += `Marks: ${n.marks.map(x => `${fmtDur(x.t)} ${x.tag}`).join(' · ')}\n`;
+    if (n.text) s += `${n.text}\n`;
+    if (n.transcript) s += `Transcript:\n${n.transcript}\n`;
+  }
+  return s;
+}
+async function shareFiles(files, title){
+  if (navigator.share && navigator.canShare && navigator.canShare({files})){
+    try { await navigator.share({files, title}); return true; } catch(e){ if (e.name === 'AbortError') return false; toast('Share failed: ' + e.message, 3500); return false; }
+  }
+  // fallback: open each file
+  files.forEach(f => { const u = URL.createObjectURL(f); const a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); });
+  return true;
+}
+async function shareNote(nid){ const n = await get('notes', nid); if (!n || !n.blob) return; await shareFiles([fileFor(n)], fileFor(n).name); }
+async function exportMeeting(id){
+  const m = MEETINGS.find(x => x.id === id); const notes = (noteCache[id] || []);
+  const files = notes.filter(n => n.blob).map(fileFor);
+  files.unshift(new File([meetingText(id)], `V${String(id).padStart(2,'0')}_${m.name.replace(/[^A-Za-z0-9]+/g,'')}_notes.md`, {type:'text/markdown'}));
+  const total = files.reduce((s,f) => s + f.size, 0);
+  if (files.length > 1 && total > 400e6) toast('Large export: share videos one by one if this fails', 4000);
+  await shareFiles(files, `Visit ${id} · ${m.name}`);
+}
+async function exportText(){
+  const s = MEETINGS.map(m => meetingText(m.id)).join('\n\n---\n\n');
+  try { await navigator.clipboard.writeText(s); toast('Copied all notes'); } catch(e){ await shareFiles([new File([s], 'mill-notes.md', {type:'text/markdown'})], 'Mill Notes'); }
+}
+async function exportJson(){
+  const all = Object.values(noteCache).flat().map(n => ({...n, blob: undefined, file: n.blob ? fileFor(n).name : null}));
+  const data = JSON.stringify({exportedAt: new Date().toISOString(), user, meetings: meetingState, notes: all}, null, 1);
+  await shareFiles([new File([data], 'mill-notes.json', {type:'application/json'})], 'Mill Notes JSON');
+}
+
+/* ---------- recording ---------- */
+let rec = null; // {mr, stream, recId, start, marks, timer, ctx, raf, meetingId, bytes}
+function pickMime(){ for (const t of ['audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/webm;codecs=opus','audio/webm','audio/ogg']) { try { if (MediaRecorder.isTypeSupported(t)) return t; } catch(e){} } return ''; }
+async function startRecording(mid){
+  if (rec) return;
+  if (!navigator.mediaDevices || !window.MediaRecorder){ toast('Recording needs Safari 14.5+ (open from Home Screen)', 4000); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:true}}); }
+  catch(e){ toast('Microphone blocked. Settings › Safari (or Mill Notes) › Microphone', 4500); return; }
+  const mime = pickMime(); const mr = new MediaRecorder(stream, mime ? {mimeType: mime, audioBitsPerSecond: 64000} : undefined);
+  const recId = Date.now(); const m = MEETINGS.find(x => x.id === mid);
+  rec = {mr, stream, recId, start: Date.now(), marks:[], meetingId: mid, bytes:0, mime: mr.mimeType || mime};
+  try { localStorage.setItem('mn.rec', JSON.stringify({recId, meetingId: mid, start: rec.start, by: user, mime: rec.mime})); } catch(e){}
+  const self = rec;
+  mr.ondataavailable = (ev) => { if (ev.data && ev.data.size){ self.bytes += ev.data.size; const seq = Date.now(); self.pending = (self.pending || Promise.resolve()).then(() => add('parts', {rec: recId, seq, blob: ev.data})).catch(() => {}); $('#rec-size').textContent = fmtBytes(self.bytes); } };
+  mr.onstop = () => finalizeRecording(recId, mid, rec.start, rec.marks, rec.mime, false, user, rec.stopAt);
+  mr.start(4000);
+  // UI
+  $('#rec-title').textContent = `${String(mid).padStart(2,'0')} · ${m.name}`; $('#rec-by').textContent = `Recording · ${user || ''}`;
+  $('#rec-marks').innerHTML = ''; $('#rec-timer').textContent = '00:00'; $('#rec-size').textContent = ''; $('#rec').hidden = false;
+  rec.timer = setInterval(() => { $('#rec-timer').textContent = fmtDur((Date.now() - rec.start)/1000); }, 500);
+  try { rec.lock = await navigator.wakeLock.request('screen'); } catch(e){}
+  meter(stream);
+  if (!meetingState[mid]?.checkedIn) checkIn(mid, true);
+}
+function meter(stream){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)(); const src = ctx.createMediaStreamSource(stream); const an = ctx.createAnalyser(); an.fftSize = 256; src.connect(an);
+    const data = new Uint8Array(an.frequencyBinCount); const c = $('#rec-meter'), g = c.getContext('2d'); const hist = new Array(120).fill(0);
+    rec.ctx = ctx;
+    const draw = () => { if (!rec) return; an.getByteTimeDomainData(data); let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128)); hist.push(peak/128); hist.shift();
+      g.clearRect(0,0,c.width,c.height); const w = c.width / hist.length; hist.forEach((v,i) => { const h = Math.max(3, v * c.height); g.fillStyle = v > .85 ? '#E0443A' : '#F6A623'; g.fillRect(i*w, (c.height-h)/2, w-1.5, h); });
+      rec.raf = requestAnimationFrame(draw); };
+    draw();
+  } catch(e){}
+}
+function addMark(tag){ if (!rec) return; const t = (Date.now() - rec.start)/1000; rec.marks.push({t, tag}); const d = document.createElement('div'); d.innerHTML = `<b>${fmtDur(t)}</b> ${esc(tag)}`; $('#rec-marks').prepend(d); if (navigator.vibrate) navigator.vibrate(30); }
+$('#rec-mark').onclick = () => addMark('Mark');
+$('#rec-quick').addEventListener('click', e => { const b = e.target.closest('button'); if (b) addMark(b.dataset.tag); });
+$('#rec-stop').onclick = () => stopRecording();
+function stopRecording(){ if (!rec) return; rec.stopAt = Date.now(); try { rec.mr.state !== 'inactive' && rec.mr.stop(); } catch(e){ finalizeRecording(rec.recId, rec.meetingId, rec.start, rec.marks, rec.mime, false); } }
+async function finalizeRecording(recId, mid, start, marks, mime, recovered, by, stopAt){
+  const live = rec && rec.recId === recId ? rec : null;
+  if (live){ clearInterval(live.timer); cancelAnimationFrame(live.raf); try { live.stream.getTracks().forEach(t => t.stop()); } catch(e){} try { live.ctx && live.ctx.close(); } catch(e){} try { live.lock && live.lock.release(); } catch(e){} rec = null; }
+  $('#rec').hidden = true;
+  if (live && live.pending) { try { await live.pending; } catch(e){} }
+  await new Promise(r => setTimeout(r, 100));
+  const parts = (await getAll('parts', 'rec', recId)).sort((a,b) => a.seq - b.seq);
+  if (!parts.length){ try { localStorage.removeItem('mn.rec'); } catch(e){} if (!recovered) toast('Nothing recorded'); return; }
+  const blob = new Blob(parts.map(p => p.blob), {type: mime || parts[0].blob.type});
+  const duration = Math.max(1, ((stopAt || parts[parts.length-1].seq) - start)/1000);
+  await add('notes', {meetingId: mid, type:'audio', blob, createdAt: start, by: by || user, duration, marks, tags:[], recovered: !!recovered});
+  for (const p of parts) await del('parts', p.id);
+  try { localStorage.removeItem('mn.rec'); } catch(e){}
+  toast(recovered ? `Recovered a ${fmtDur(duration)} recording` : `Saved ${fmtDur(duration)} recording`, 3000);
+  render();
+}
+async function recoverIfNeeded(){
+  let info = null; try { info = JSON.parse(localStorage.getItem('mn.rec') || 'null'); } catch(e){}
+  if (info && !rec) await finalizeRecording(info.recId, info.meetingId, info.start, [], info.mime, true, info.by);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && rec && rec.mr.state === 'inactive'){ toast('Recording stopped when the screen locked. Saved what we had.', 4000); finalizeRecording(rec.recId, rec.meetingId, rec.start, rec.marks, rec.mime, false); }
+});
+
+/* ---------- boot ---------- */
+const APP_VERSION = '1.0';
+function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
+window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+(async () => { await recoverIfNeeded(); if (!user) $('#overlay').hidden = false; render(); })();
+</script>
+</body>
+</html>
