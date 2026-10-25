@@ -1,5 +1,5 @@
 // Mill Notes service worker — app shell cached for full offline use.
-const VERSION = 'v7';
+const VERSION = 'v8';
 const CACHE = 'millnotes-' + VERSION;
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-512.png', './icon-512-maskable.png'];
 

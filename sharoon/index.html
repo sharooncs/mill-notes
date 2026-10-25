@@ -84,7 +84,7 @@ main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){an
 /* glossy 3D number orb */
 .num{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:50%;font-weight:800;font-size:13px;font-family:var(--mono);color:var(--honey-ink);
   background:radial-gradient(circle at 32% 28%,#FFF6D8 0,var(--honey2) 28%,var(--honey) 62%,#E88A00 100%);box-shadow:inset 0 -3px 6px rgba(160,80,0,.35),inset 0 2px 3px rgba(255,255,255,.8),0 4px 10px -3px rgba(220,120,0,.55)}
-.row.done .num{color:#fff;background:radial-gradient(circle at 32% 28%,#D8FFEE 0,#6FE0B0 28%,var(--mint) 64%,#118A5C 100%);box-shadow:inset 0 -3px 6px rgba(0,90,50,.35),inset 0 2px 3px rgba(255,255,255,.7),0 4px 10px -3px rgba(20,150,100,.55)}
+.row.done .num,.rvisit.done .num{color:#fff;background:radial-gradient(circle at 32% 28%,#D8FFEE 0,#6FE0B0 28%,var(--mint) 64%,#118A5C 100%);box-shadow:inset 0 -3px 6px rgba(0,90,50,.35),inset 0 2px 3px rgba(255,255,255,.7),0 4px 10px -3px rgba(20,150,100,.55)}
 
 /* actions: one wide hero (meeting) + four tactile tiles */
 .actions{display:flex;flex-direction:column;gap:10px}
@@ -108,7 +108,7 @@ main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){an
 .act svg{width:22px;height:22px;fill:#fff}
 .bub.grape{background:linear-gradient(150deg,var(--grape2),var(--grape))} .bub.peach{background:linear-gradient(150deg,#FFB78C,#FF8A5B)}
 .bub.rose{background:linear-gradient(150deg,#FF9FB4,#F0627F)} .bub.honey{background:linear-gradient(150deg,var(--honey2),var(--honey))}
-.act.memo{color:var(--grape)}
+
 
 /* check-in */
 .checkin{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:.5px solid var(--hair)}
@@ -118,15 +118,16 @@ main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){an
 .btn.primary:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 -1px #E39400}
 .btn.ghost{background:var(--glass-hi);color:var(--ink);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 6px 14px -10px rgba(150,70,25,.5)}
 .btn.danger{background:rgba(240,69,58,.12);color:var(--red)}
-.btn.small{min-height:38px;padding:0 13px;font-size:14px;border-radius:12px}
+.btn.small{min-height:44px;padding:0 12px;font-size:14px;border-radius:13px}
 .btn svg{width:18px;height:18px;fill:currentColor}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 11px;border-radius:999px;background:var(--glass-hi);color:var(--ink2);border:1px solid var(--stroke)}
-.chip.ok{background:rgba(37,176,122,.16);color:var(--mint-ink);border-color:transparent}
+.chip.ok{background:rgba(37,176,122,.16);color:#0F6B47;border-color:transparent}
 .chip.amber{background:rgba(255,178,31,.18);color:#B06A00;border-color:transparent}
 
 /* report bar on home */
 .reportbar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.repbtn{display:flex;align-items:center;gap:10px;padding:12px;border-radius:20px;text-decoration:none;color:var(--ink);font-weight:800;font-size:15px;line-height:1.15}
+.repbtn{display:flex;align-items:center;gap:10px;padding:12px;border-radius:20px;text-decoration:none;color:var(--ink);font-weight:800;font-size:15px;line-height:1.15;min-height:64px}
+.repbtn > span:last-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .repbtn small{display:block;font-weight:600;font-size:12px;color:var(--ink2)}
 .repbtn .bub{width:38px;height:38px;flex:none;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 1px rgba(255,255,255,.6),0 4px 8px -3px rgba(0,0,0,.25)}
 .repbtn svg{width:21px;height:21px;fill:#fff}
@@ -165,26 +166,28 @@ main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){an
 .composer{border-radius:24px;padding:12px;background:var(--glass-hi);border:2px solid var(--honey);box-shadow:var(--shadow);animation:pop .35s var(--spring)}
 @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
 textarea.note,.transcript{resize:none;overflow:hidden}
-textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);border:1px solid var(--hair);border-radius:16px;padding:12px;font-size:17px;resize:vertical}
+textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);border:1px solid var(--hair);border-radius:16px;padding:12px;font-size:17px}
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .tag{min-height:44px;padding:8px 14px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--hair);font-size:14px;font-weight:700;color:var(--ink2);transition:transform .2s var(--spring)}
 .tag.on{background:linear-gradient(180deg,var(--honey2),var(--honey));color:var(--honey-ink);border-color:transparent;transform:scale(1.04)}
 .rowbtns{display:flex;gap:10px;justify-content:flex-end}
 
 .note-card{border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:9px;background:var(--solid);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 22px -16px rgba(150,70,25,.6);position:relative;overflow:hidden}
-.note-card.k-meeting{box-shadow:inset 5px 0 0 var(--coral),0 10px 22px -16px rgba(150,70,25,.6)} .note-card.k-memo{box-shadow:inset 5px 0 0 var(--grape),0 10px 22px -16px rgba(150,70,25,.6)}
+.note-card.k-meeting::before,.note-card.k-memo::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:5px;border-radius:0 5px 5px 0;background:#D9492B}
+.note-card.k-memo::before{background:#6E47D8}
 .note-card.k-meeting,.note-card.k-memo{padding-left:16px}
 .note-card .hd{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);flex-wrap:wrap}
 .note-card .hd .kind{display:inline-flex;align-items:center;gap:5px;font-weight:800;color:var(--ink);text-transform:capitalize}
 .note-card .hd .kind svg{width:16px;height:16px;fill:currentColor}
 .note-card .hd .sp{flex:1}
-.note-card .by{font-weight:800;color:var(--coral)}
+.note-card .by{font-weight:800;color:var(--link)}
 .kindbadge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;padding:5px 10px;border-radius:999px;color:#fff}
 .kindbadge svg{width:14px;height:14px;fill:#fff}
 .kindbadge.meeting{background:#D9492B} .kindbadge.memo{background:#6E47D8}
-.kindbadge.text{background:#9A5B00} .kindbadge.photo{background:#C9532E} .kindbadge.video{background:#C23E62}
+.kindbadge.text{background:#9A5B00} .kindbadge.photo{background:#6E4F3D} .kindbadge.video{background:#C23E62}
 .kindnote{font-size:12px;color:var(--ink2);font-weight:600}
-.note-card img,.note-card video{width:100%;max-height:60vh;object-fit:contain;border-radius:16px;background:#000}
+.note-card img{width:100%;max-height:60vh;object-fit:contain;border-radius:16px;background:#F6EAE1}
+.note-card video{width:100%;max-height:60vh;object-fit:contain;border-radius:16px;background:#000}
 .note-card audio{display:none}
 .player{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px;border-radius:18px;background:var(--glass-hi);border:1px solid var(--hair)}
 .player .pp{width:44px;height:44px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 10px -4px rgba(0,0,0,.35)}
@@ -215,11 +218,11 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
   background:radial-gradient(120% 70% at 50% 28%,#E9603D 0,#C93F24 50%,#9A2B15 100%);animation:fadein .3s var(--ease)}
 #rec.memo{background:radial-gradient(120% 70% at 50% 28%,#8C67EE 0,#6A43D4 50%,#45229E 100%)}
 @keyframes fadein{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:none}}
-#rec .rh{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;opacity:.95}
+#rec .rh{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700}
 #rec .dot{width:12px;height:12px;border-radius:50%;background:#FF2D1F;box-shadow:0 0 0 3px #fff;animation:blink 1.2s infinite}
 #rec .mode{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.2);font-size:13px;font-weight:800}
 #rec .title{font-size:21px;font-weight:800;margin-top:8px;text-wrap:balance;letter-spacing:-.01em}
-#rec .stage{position:relative;height:190px;display:flex;align-items:center;justify-content:center;margin:6px 0 2px;perspective:600px}
+#rec .stage{position:relative;overflow:hidden;height:190px;display:flex;align-items:center;justify-content:center;margin:6px 0 2px;perspective:600px}
 #rec .orb{width:132px;height:132px;border-radius:50%;will-change:transform;transition:transform .08s linear;
   background:radial-gradient(circle at 34% 28%,#fff 0,rgba(255,255,255,.85) 9%,rgba(255,226,200,.6) 22%,rgba(255,140,100,.25) 48%,rgba(255,255,255,.06) 70%),radial-gradient(circle at 60% 75%,rgba(120,20,0,.35),transparent 60%);
   box-shadow:inset -10px -16px 30px rgba(120,20,0,.35),inset 8px 10px 22px rgba(255,255,255,.55),0 24px 40px -14px rgba(80,10,0,.6),0 0 60px 10px rgba(255,255,255,.18)}
@@ -234,7 +237,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 #rec .marklist div{animation:pop .3s var(--spring)}
 #rec .marklist div b{background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px}
 #rec .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-#rec .quick button{height:48px;border-radius:14px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.45);font-weight:800;font-size:14px;color:#fff;transition:transform .15s var(--spring)}
+#rec .quick button{padding:0 4px;height:48px;border-radius:14px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.45);font-weight:800;font-size:14px;color:#fff;transition:transform .15s var(--spring)}
 #rec .quick button:active{transform:scale(.92);background:rgba(255,255,255,.4)}
 #rec .bottom{display:flex;gap:12px;align-items:center}
 #rec .markbtn{flex:1;height:70px;border-radius:22px;background:#fff;color:#C83A1E;font-size:19px;font-weight:800;box-shadow:0 6px 0 -1px rgba(0,0,0,.18),0 14px 24px -12px rgba(0,0,0,.5)}
@@ -252,17 +255,19 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 #rec .rtools button{height:44px;border-radius:14px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.45);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px}
 #rec .rtools svg{width:17px;height:17px;fill:#fff}
 #rec .rtools button:active{transform:scale(.95)}
+#rec.noting .stage,#rec.noting canvas,#rec.noting .quick,#rec.noting .marklist,#rec.noting .warn{display:none}
 #rec .rnote{background:rgba(255,255,255,.95);border-radius:18px;padding:10px;margin-bottom:10px;color:var(--ink)}
-#rec .rnote textarea{width:100%;border:1px solid var(--hair);border-radius:12px;padding:10px;font-size:17px;background:#fff;color:var(--ink)}
+#rec .rnote textarea{resize:none;width:100%;border:1px solid var(--hair);border-radius:12px;padding:10px;font-size:17px;background:#fff;color:var(--ink)}
 
 #rec .quick button.flash{animation:flash .5s var(--ease)}
 @keyframes flash{0%{background:#fff;color:#A8301A;transform:scale(1.08)}100%{background:rgba(0,0,0,.24);color:#fff;transform:none}}
 #rec.memo .rtools button[data-rt="undo"]{display:none} #rec.memo .rtools{grid-template-columns:1fr 1fr}
 /* short screens (landscape, small phones): drop the orb, keep every control reachable */
+@media (max-width:380px){ #rec .quick button{font-size:13px} }
 @media (max-height:700px){ #rec .stage{height:110px} #rec .orb,#rec .ripple{width:84px;height:84px} #rec .timer{font-size:44px} }
 @media (max-height:560px){ #rec .stage,#rec canvas{display:none} #rec .timer{font-size:40px;text-align:left} #rec .title{font-size:17px;margin-top:4px}
   #rec .marklist{min-height:28px;max-height:90px} #rec .markbtn,#rec .stop{height:56px} #rec .stop{width:56px} #rec.memo .stop{width:76px;height:76px} #rec .warn{display:none}
-  #rec{display:grid;grid-template-columns:1fr 1.15fr;column-gap:20px;align-content:start;grid-auto-flow:row dense}
+  #rec{display:grid;grid-template-columns:1fr 1.15fr;column-gap:20px;align-content:center;grid-auto-flow:row dense}
   #rec > .rh,#rec > .title,#rec > .timer,#rec > #rec-by,#rec > .marklist{grid-column:1}
   #rec > .quick,#rec > .rtools,#rec > .rnote,#rec > .bottom{grid-column:2} #rec > .rtools{margin-top:0} #rec #rec-by{text-align:left!important}
   #rec.memo > .bottom{grid-column:2;margin-top:0} }
@@ -272,7 +277,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 /* settings / first run */
 .pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .pick button{height:64px;border-radius:18px;background:var(--glass-hi);border:1px solid var(--stroke);font-size:18px;font-weight:800;box-shadow:inset 0 1px 0 #fff,0 4px 0 -1px rgba(214,170,140,.55)}
-.pick button.on{background:linear-gradient(160deg,var(--coral2),var(--coral));color:#fff;border-color:transparent;box-shadow:0 4px 0 -1px #D9442A}
+.pick button.on{background:#C2452A;color:#fff;border-color:transparent;box-shadow:0 4px 0 -1px #8F2E19}
 .kv{display:flex;justify-content:space-between;gap:10px;font-size:15px;color:var(--ink2)}
 .kv b{color:var(--ink);font-family:var(--mono)}
 #toast{position:fixed;left:50%;bottom:calc(var(--sab) + 24px);transform:translateX(-50%);z-index:60;width:max-content;max-width:calc(100vw - 32px);text-align:center;padding:12px 18px;border-radius:22px;font-weight:700;font-size:15px;color:var(--ink);
@@ -292,6 +297,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .rtag{font-size:13px;font-weight:800;color:#B06A00;margin-top:4px}
 .rl{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
 .rl.rother{color:var(--ink2)}
+.rl li{overflow-wrap:anywhere} .rl.rother li{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .rv{color:var(--sky);text-decoration:none;font-weight:800}
 .rby{font-size:12px;color:var(--ink3)}
 .rtg{font-size:12px;font-weight:800;color:#9A5B00;background:rgba(255,178,31,.2);padding:2px 8px;border-radius:999px}
@@ -322,7 +328,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
   <div class="title" id="rec-title"></div>
   <div class="stage" aria-hidden="true"><span class="ripple"></span><span class="ripple r2"></span><div class="orb" id="rec-orb"></div></div>
   <div class="timer" id="rec-timer">00:00</div>
-  <div style="text-align:center;font-size:13px;font-weight:700;opacity:.9" id="rec-by">Recording</div>
+  <div style="text-align:center;font-size:15px;font-weight:700" id="rec-by">Recording</div>
   <canvas id="rec-meter" width="600" height="88"></canvas>
   <div class="marklist" id="rec-marks" aria-live="polite"></div>
   <div class="quick" id="rec-quick">
@@ -342,8 +348,8 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
     <button class="markbtn" id="rec-mark">Mark moment</button>
     <button class="stop" id="rec-stop" aria-label="Stop and save"><i></i><span>Stop</span></button>
   </div>
-  <div class="warn lockwarn" id="rec-lockwarn" hidden>This phone can't hold the screen on. Set Settings › Display &amp; Brightness › Auto-Lock › Never.</div>
-  <div class="warn">Keep the screen on. Recording stops if the phone locks or you switch apps.</div>
+  <div class="warn lockwarn" id="rec-lockwarn" hidden>Recording stops if the screen locks. Set Settings › Display › Auto-Lock › Never.</div>
+  <div class="warn" id="rec-keepon">Keep the app open: recording stops if you switch apps.</div>
 </div>
 
 <!-- first-run -->
@@ -449,7 +455,8 @@ const _cnParts = new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year:'numeric',
 function cn(d){ const p = {}; _cnParts.formatToParts(new Date(d)).forEach(x => p[x.type] = x.value); return {date:`${p.year}-${p.month}-${p.day}`, hm:`${p.hour}:${p.minute}`, mins: Number(p.hour)*60 + Number(p.minute), stamp:`${p.year}${p.month}${p.day}-${p.hour}${p.minute}`}; }
 function fmtTime(d){ return cn(d).hm; }
 function fmtDateTime(d){ const c = cn(d); return `${c.date} ${c.hm} (China time)`; }
-function fmtDur(s){ s = Math.round(s); const m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
+function fmtDur(s){ s = Math.max(0, Math.round(s)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), r = s%60, p = n => String(n).padStart(2,'0');
+  return h ? `${h}:${p(m)}:${p(r)}` : `${p(m)}:${p(r)}`; }
 function fmtBytes(b){ return b > 1e9 ? (b/1e9).toFixed(2)+' GB' : b > 1e6 ? (b/1e6).toFixed(1)+' MB' : Math.round(b/1e3)+' KB'; }
 function mins(hhmm){ const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
 
@@ -563,7 +570,7 @@ function renderHome(){
     ${stillAtHtml(m, why)}
   </section>
   <div class="reportbar">
-    <a href="#day${rd}" class="repbtn glass"><span class="bub honey">${ICON.rep}</span><span>${MEETINGS.find(x => x.day === rd).date === cn(Date.now()).date ? "Today's" : `${MEETINGS.find(x => x.day === rd).dow}'s`} report<small>${DAYLABEL[rd].split(' · ')[1]}</small></span></a>
+    <a href="#day${rd}" class="repbtn glass"><span class="bub honey">${ICON.rep}</span><span>${MEETINGS.find(x => x.day === rd).date === cn(Date.now()).date ? "Today's report" : `${MEETINGS.find(x => x.day === rd).dow}'s report`}<small>${DAYLABEL[rd].split(' · ')[1].split(' → ')[0]}${DAYLABEL[rd].includes('→') ? ' +' : ''}</small></span></a>
     <a href="#trip" class="repbtn glass"><span class="bub peach">${ICON.trip}</span><span>Trip report<small>All 12 visits</small></span></a>
   </div>`;
   for (const d of days){
@@ -624,7 +631,7 @@ function noteHtml(n){
     + (n.marks && n.marks.length ? `<div class="marks${n.marks.length > 12 ? ' collapsed' : ''}">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtDur(x.t)}</b> ${esc(x.tag === 'Mark' ? 'Marked' : x.tag)}</button>`).join('')}</div>${n.marks.length > 12 ? `<button class="morebtn" data-more-marks>Show all ${n.marks.length} tags</button>` : ''}` : '')
     + `<details><summary>${ak === 'memo' ? 'Transcript' : 'Chinese transcript / translation'}${n.transcript ? ' ✓' : ''}</summary>
        <textarea class="transcript" data-tr="${n.id}" placeholder="${ak === 'memo' ? 'Optional: paste a transcript of your voice note.' : 'Paste the Mill Transcribe result here, or leave it for after the trip.'}">${esc(n.transcript || '')}</textarea></details>`; }
-  if (n.type !== 'text' && n.text) body += `<p style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>`;
+  if (n.type !== 'text' && n.text) body += `<p class="capline" style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>`;
   const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
   const extra = n.type === 'audio' ? ` · ${fmtDur(n.duration || 0)}${n.recovered ? ' · recovered' : ''}` : n.blob ? ` · ${fmtBytes(n.blob.size)}` : '';
   const kindHtml = ak ? `<span class="kindbadge ${ak}">${ICON[AKIND[ak].icon]}${AKIND[ak].label}</span>` : `<span class="kindbadge ${n.type}">${ICON[k]}${{text:'Note', photo:'Photo', video:'Video'}[n.type]}</span>`;
@@ -782,7 +789,8 @@ async function captionNote(nid){
   const box = document.createElement('div'); box.className = 'cap';
   box.innerHTML = `<textarea class="transcript" placeholder="Caption: what is this?">${esc(n.text || '')}</textarea><div class="tags">${TAGS.map(t => `<button class="tag ${(n.tags||[]).includes(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div><div class="rowbtns"><button class="btn ghost small capcancel">Cancel</button><button class="btn primary small capsave">Save</button></div>`;
   card.insertBefore(box, card.querySelector('.ft')); card.querySelector('.ft').hidden = true;
-  box.querySelector('.capcancel').onclick = () => { box.remove(); card.querySelector('.ft').hidden = false; };
+  const capline = card.querySelector('.capline'); if (capline) capline.hidden = true;
+  box.querySelector('.capcancel').onclick = () => { box.remove(); card.querySelector('.ft').hidden = false; if (capline) capline.hidden = false; };
   const sel = new Set(n.tags || []);
   box.querySelectorAll('.tag').forEach(b => b.onclick = () => { b.classList.toggle('on'); const t = b.dataset.t; sel.has(t) ? sel.delete(t) : sel.add(t); });
   box.querySelector('.capsave').onclick = async () => {
@@ -814,7 +822,7 @@ function visitFacts(m){
     const text = (n.text || '').trim();
     const what = ak ? AKIND[ak].short : n.type;
     const label = n.type === 'text' ? (text || '(tag only, no text)') : text ? `${what} — ${text}` : `${what} at ${fmtTime(n.createdAt)}`;
-    if (ak === 'memo' && !(n.tags && n.tags.length)) continue; // untagged voice notes are listed in their own section
+    if (ak && !(n.tags && n.tags.length)) continue; // recordings are listed in their own sections (with caption + transcript)
     if (n.tags && n.tags.length) n.tags.forEach(t => items.push({tag: t, text: label, by: n.by, at: n.createdAt, kind: n.type}));
     else if (text) other.push({text: label, by: n.by, at: n.createdAt});
   }
@@ -843,7 +851,7 @@ function reportMarkdown(scope){
   const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
   let s = `# ${R.title}\n\nPrepared from ${user || 'this phone'}'s notes on this phone · generated ${fmtDateTime(Date.now())}\n\n`;
   s += `## At a glance\n\n- Visits: ${t.checked} of ${t.visits} checked in\n- Meeting recordings (to transcribe + translate): ${t.meeting} (${fmtHours(t.recSecs)})\n- Voice notes (own memos, to summarise): ${t.memo} (${fmtHours(t.memoSecs)})\n- Photos ${t.photo} · videos ${t.video} · typed notes ${t.text}\n- Summaries written: ${t.summaries} of ${t.visits}\n`;
-  const missing = R.facts.filter(f => !f.st.summary).map(f => pad2(f.m.id)); if (missing.length) s += `- Missing summary: visits ${missing.join(', ')}\n`;
+  const missing = R.facts.filter(f => !f.st.summary && new Date(`${f.m.date}T${f.m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now()).map(f => pad2(f.m.id)); if (missing.length) s += `- Missing summary: visits ${missing.join(', ')}\n`;
   if (!R.day){
     s += `\n| # | Date | Supplier | Checked in | Meeting rec | Voice notes | Photos | Summary |\n|---|---|---|---|---|---|---|---|\n`;
     for (const f of R.facts) s += `| ${pad2(f.m.id)} | ${f.m.dow} ${f.m.date.slice(8)} Oct | ${f.m.name} | ${f.st.checkedIn ? fmtTime(f.st.at) : '—'} | ${f.c.meeting ? fmtHours(f.recSecs) : '—'} | ${f.c.memo || '—'} | ${f.c.photo || '—'} | ${(f.st.summary || '').split('\n')[0].replace(/\|/g,'/') || '—'} |\n`;
@@ -881,13 +889,14 @@ function renderReport(scope){
   let h = `<section class="repcard glass" style="display:flex;flex-direction:column;gap:10px"><div class="eyebrow">${R.day ? 'Day report' : 'Whole trip'} · ${esc(user || '')}'s phone</div><h2>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill tour')}</h2>
     <div class="stats">
       <div class="${z(t.checked)}"><b>${t.checked}/${t.visits}</b><span>checked in</span></div>
-      <div class="sm${z(t.meeting)}"><b>${t.meeting}</b><span>meeting recordings · ${fmtHours(t.recSecs)}</span></div>
-      <div class="sv${z(t.memo)}"><b>${t.memo}</b><span>voice notes · ${fmtHours(t.memoSecs)}</span></div>
+      <div class="sm${z(t.meeting)}"><b>${t.meeting}</b><span>meeting recordings${t.recSecs ? ` · ${fmtHours(t.recSecs)}` : ''}</span></div>
+      <div class="sv${z(t.memo)}"><b>${t.memo}</b><span>voice notes${t.memoSecs ? ` · ${fmtHours(t.memoSecs)}` : ''}</span></div>
       <div class="${z(t.summaries)}"><b>${t.summaries}/${t.visits}</b><span>summaries</span></div>
     </div>
     <div style="font-size:13px;color:var(--ink2);font-weight:600">${plural(t.photo,'photo')} · ${plural(t.video,'video')} · ${plural(t.text,'typed note')}</div>
     <div class="rowbtns"><button class="btn ghost small" data-a="repcopy" data-s="${scope}">Copy</button><button class="btn ${t.checked + t.audio + t.text + t.photo ? 'primary' : 'ghost'} small" data-a="repshare" data-s="${scope}">Share report</button></div></section>`;
-  const missing = R.facts.filter(f => !f.st.summary);
+  const started = f => new Date(`${f.m.date}T${f.m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now();
+  const missing = R.facts.filter(f => !f.st.summary && started(f));
   if (missing.length) h += `<div class="banner"><span>Missing summary: ${missing.map(f => `<a href="#m${f.m.id}" class="rv">${pad2(f.m.id)}</a>`).join(' ')}</span></div>`;
   for (const tag of ['Follow-up','Question']) if (topics[tag]) h += `<section class="card"><h3 class="rh3">${tag === 'Follow-up' ? 'Follow-ups' : 'Open questions'}</h3><ul class="rl">${topics[tag].map(li).join('')}</ul></section>`;
   const tp = TOPIC_ORDER.filter(tg => topics[tg] && !['Follow-up','Question'].includes(tg));
@@ -895,12 +904,12 @@ function renderReport(scope){
   let curDay = null;
   for (const f of R.facts){
     if (!R.day && f.m.day !== curDay){ curDay = f.m.day; h += `<div class="section-h"><h3>${DAYLABEL[curDay]} · <a href="#day${curDay}" class="rv">day report</a></h3></div>`; }
-    h += `<section class="card rvisit"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a>
+    h += `<section class="card rvisit${f.st.checkedIn ? ' done' : ''}"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a>
       <div class="rmeta">${f.st.checkedIn ? `<span class="chip ok">✓ ${fmtTime(f.st.at)}</span>` : '<span class="chip">Not checked in</span>'}
         <span>${f.c.meeting ? `${plural(f.c.meeting,'meeting recording')} · ${fmtHours(f.recSecs)}` : 'no meeting recording'}${f.c.memo ? ` · ${plural(f.c.memo,'voice note')}` : ''} · ${plural(f.c.photo,'photo')}${f.c.video ? ` · ${plural(f.c.video,'video')}` : ''}${f.c.text ? ` · ${plural(f.c.text,'note')}` : ''}</span></div>
       <p class="rsum">${f.st.summary ? esc(f.st.summary) : '<i>No summary yet</i>'}</p>
       ${f.items.length ? `<ul class="rl">${f.items.sort((a,b) => a.at - b.at).map(it => `<li><span class="rtg">${esc(it.tag)}</span> ${esc(it.text)}</li>`).join('')}</ul>` : ''}
-      ${f.meetings.filter(r => r.caption || r.transcript).length ? `<ul class="rl">${f.meetings.filter(r => r.caption || r.transcript).map(r => `<li><span class="rtg" style="background:var(--coral);color:#fff">Meeting</span> ${fmtTime(r.at)}${r.caption ? ` — ${esc(r.caption)}` : ''}${r.transcript ? `<div class="rtx">${esc(r.transcript.length > 320 ? r.transcript.slice(0, 320) + '…' : r.transcript)}</div>` : ''}</li>`).join('')}</ul>` : ''}
+      ${f.meetings.filter(r => r.caption || r.transcript).length ? `<ul class="rl">${f.meetings.filter(r => r.caption || r.transcript).map(r => `<li><span class="rtg" style="background:#C2452A;color:#fff">Meeting</span> ${fmtTime(r.at)}${r.caption ? ` — ${esc(r.caption)}` : ''}${r.transcript ? `<div class="rtx">${esc(r.transcript.length > 320 ? r.transcript.slice(0, 320) + '…' : r.transcript)}</div>` : ''}</li>`).join('')}</ul>` : ''}
       ${f.memos.length ? `<ul class="rl">${f.memos.map(v => `<li><span class="rtg memo">Voice note</span> ${fmtTime(v.at)} · ${fmtDur(v.dur)}${v.text ? ` — ${esc(v.text)}` : ''}</li>`).join('')}</ul>` : ''}
       ${f.other.length ? `<ul class="rl rother">${f.other.map(o => `<li>${esc(o.text)}</li>`).join('')}</ul>` : ''}</section>`;
   }
@@ -1012,8 +1021,8 @@ async function startRecording(mid, kind = 'meeting'){
   } finally { starting = false; }
 }
 async function lockScreen(r){
-  try { r.lock = await navigator.wakeLock.request('screen'); $('#rec-lockwarn').hidden = true; }
-  catch(e){ r.lock = null; $('#rec-lockwarn').hidden = false; }
+  let ok = false; try { r.lock = await navigator.wakeLock.request('screen'); ok = true; } catch(e){ r.lock = null; }
+  $('#rec-lockwarn').hidden = ok; $('#rec-keepon').hidden = !ok; // one message, never both
 }
 function meter(r){
   try {
@@ -1022,7 +1031,7 @@ function meter(r){
     const data = new Uint8Array(an.frequencyBinCount); const c = $('#rec-meter'), g = c.getContext('2d'); const hist = new Array(120).fill(0);
     const draw = () => { if (rec !== r) return; an.getByteTimeDomainData(data); let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128)); hist.push(peak/128); hist.shift();
       const orb = $('#rec-orb'); if (orb) orb.style.transform = `scale(${(1 + Math.min(.45, hist[hist.length-1] * 1.4)).toFixed(3)}) rotateX(${(hist[hist.length-1]*25).toFixed(1)}deg)`;
-      g.clearRect(0,0,c.width,c.height); const w = c.width / hist.length; hist.forEach((v,i) => { const h = Math.max(3, v * c.height); g.fillStyle = v > .85 ? '#FFE3A3' : 'rgba(255,255,255,.85)'; g.fillRect(i*w, (c.height-h)/2, w-1.5, h); });
+      g.clearRect(0,0,c.width,c.height); const w = c.width / hist.length; hist.forEach((v,i) => { const h = Math.max(3, v * c.height); g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(i*w, (c.height-h)/2, w-1.5, h); });
       r.raf = requestAnimationFrame(draw); };
     draw();
   } catch(e){}
@@ -1042,18 +1051,19 @@ $('#rec-tools').addEventListener('click', e => {
   const b = e.target.closest('[data-rt]'); if (!b || !rec) return;
   const r = rec, t = b.dataset.rt;
   if (t === 'photo'){ pendingMeeting = r.meetingId; addMark('Photo'); $('#in-photo').click(); return; } // recording keeps running
-  if (t === 'note'){ $('#rec-note').hidden = false; $('#rec-note-text').focus(); return; }
+  if (t === 'note'){ $('#rec-note').hidden = false; $('#rec').classList.add('noting'); $('#rec-note-text').focus(); return; }
   if (t === 'undo'){ const m = r.marks.pop(); if (!m) return toast('No tag to undo'); saveRecInfo(r); $('#rec-marks').firstElementChild?.remove(); toast(`Removed ${m.tag} at ${fmtDur(m.t)}`); }
 });
 $('#rec-note').addEventListener('click', async e => {
   const b = e.target.closest('[data-rt]'); if (!b) return;
   const box = $('#rec-note'), ta = $('#rec-note-text');
-  if (b.dataset.rt === 'note-cancel'){ box.hidden = true; ta.value = ''; return; }
+  const close = () => { box.hidden = true; $('#rec').classList.remove('noting'); };
+  if (b.dataset.rt === 'note-cancel'){ close(); ta.value = ''; return; }
   if (b.dataset.rt === 'note-save' && rec){
-    const text = ta.value.trim(); if (!text){ box.hidden = true; return; }
+    const text = ta.value.trim(); if (!text){ close(); return; }
     const r = rec; addMark('Note');
     await add('notes', {meetingId: r.meetingId, type:'text', text, tags:[], createdAt: Date.now(), by: user, during: r.recId});
-    ta.value = ''; box.hidden = true; toast('Note saved, still recording');
+    ta.value = ''; close(); toast('Note saved, still recording');
   }
 });
 $('#rec-quick').addEventListener('click', e => { const b = e.target.closest('button'); if (b) addMark(b.dataset.tag); });
@@ -1074,7 +1084,7 @@ function teardown(r){
 async function finalizeRecording(recId, mid, start, marks, mime, recovered, by, stopAt, live, kind){
   if (finalized.has(recId)) return; finalized.add(recId);
   if (live){ teardown(live); if (live.interrupted) interrupted = {mid, kind: live.kind || 'meeting', at: Date.now()}; }
-  $('#rec').hidden = true; $('#rec-note').hidden = true;
+  $('#rec').hidden = true; $('#rec-note').hidden = true; $('#rec').classList.remove('noting');
   try {
     if (live) { try { await live.pending; } catch(e){} }
     const parts = (await getAll('parts', 'rec', recId)).sort((a,b) => a.seq - b.seq);
@@ -1126,7 +1136,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
 /* ---------- boot ---------- */
-const APP_VERSION = '2.3';
+const APP_VERSION = '2.4';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
