@@ -6,7 +6,8 @@
 <title>Mill Notes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="color-scheme" content="light only">
 <meta name="apple-mobile-web-app-title" content="Mill Notes">
 <meta name="theme-color" content="#FFF5EE">
 <meta name="mn-user" content="Sharoon">
@@ -33,12 +34,7 @@
   --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.34,1.56,.64,1);
   color-scheme:light;
 }
-@media (prefers-color-scheme:dark){ :root{
-  --bg:#1D1411; --bg2:#2A1C16; --blob1:#5A2C1C; --blob2:#4B2233; --blob3:#4A3815;
-  --glass:rgba(58,40,32,.55); --glass-hi:rgba(70,48,38,.75); --solid:rgba(52,36,29,.86);
-  --stroke:rgba(255,220,200,.14); --hair:rgba(255,220,200,.12);
-  --ink:#FFF1E8; --ink2:#E2C3B0; --ink3:#A98773;
-  --shadow:0 14px 34px -16px rgba(0,0,0,.7); color-scheme:dark; } }
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;min-height:100%;color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.35;background:var(--bg)}
 body{overscroll-behavior-y:none;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
@@ -165,7 +161,6 @@ main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){an
 .composer{border-radius:24px;padding:12px;background:var(--glass-hi);border:2px solid var(--honey);box-shadow:var(--shadow);animation:pop .35s var(--spring)}
 @keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
 textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);border:1px solid var(--hair);border-radius:16px;padding:12px;font-size:17px;resize:vertical}
-@media (prefers-color-scheme:dark){ textarea.note,.transcript{background:rgba(0,0,0,.2)!important} }
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .tag{padding:8px 13px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--hair);font-size:14px;font-weight:700;color:var(--ink2);transition:transform .2s var(--spring)}
 .tag.on{background:linear-gradient(180deg,var(--honey2),var(--honey));color:var(--honey-ink);border-color:transparent;transform:scale(1.04)}
@@ -968,10 +963,19 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
 /* ---------- boot ---------- */
-const APP_VERSION = '2.0';
+const APP_VERSION = '2.1';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // When a new version takes over, reload once so it shows on this open, but never mid-recording or mid-typing.
+  let hadController = !!navigator.serviceWorker.controller, reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadController){ hadController = true; return; } // first install, nothing old on screen
+    const tryReload = () => { if (reloading) return; if (rec || starting || editing()) return setTimeout(tryReload, 5000); reloading = true; location.reload(); };
+    tryReload();
+  });
+}
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
 (async () => {
   try { await recoverIfNeeded(); } catch(e){ toast('Could not recover an earlier recording: ' + ((e && e.message) || e), 6000); }
