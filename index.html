@@ -180,6 +180,12 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .note-card img,.note-card video{width:100%;max-height:60vh;object-fit:contain;border-radius:16px;background:#000}
 .note-card audio{width:100%}
 .note-card p{margin:0;white-space:pre-wrap;word-break:break-word}
+.note-card p.clamp{display:-webkit-box;-webkit-line-clamp:8;-webkit-box-orient:vertical;overflow:hidden}
+.morebtn{align-self:flex-start;font-size:14px;font-weight:800;color:var(--sky);padding:4px 0}
+.marks.collapsed .mark:nth-child(n+13){display:none}
+.contbar{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:20px;background:linear-gradient(160deg,var(--coral2),var(--coral));color:#fff;font-weight:700;box-shadow:var(--shadow)}
+.contbar span{flex:1;font-size:14px} .contbar .btn{background:#fff;color:#C83A1E}
+.stillat{display:block;margin-top:8px;font-size:14px;font-weight:700;color:var(--sky);text-decoration:none}
 .marks{display:flex;flex-wrap:wrap;gap:6px}
 .mark{font-family:var(--mono);font-size:13px;padding:8px 10px;min-height:36px;border-radius:12px;background:var(--glass-hi);color:var(--ink);border:1px solid var(--hair)}
 .mark b{color:var(--coral)}
@@ -220,9 +226,28 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 #rec .markbtn{flex:1;height:70px;border-radius:22px;background:#fff;color:#C83A1E;font-size:19px;font-weight:800;box-shadow:0 6px 0 -1px rgba(0,0,0,.18),0 14px 24px -12px rgba(0,0,0,.5)}
 #rec .markbtn:active{transform:translateY(4px)}
 #rec .stop{width:70px;height:70px;border-radius:22px;background:rgba(0,0,0,.28);border:2px solid rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;flex:none}
-#rec .stop i{display:block;width:24px;height:24px;background:#fff;border-radius:6px}
+#rec .stop{flex-direction:column;gap:4px;font-size:12px;font-weight:800;color:#fff}
+#rec .stop i{display:block;width:22px;height:22px;background:#fff;border-radius:6px}
+.act small.for{display:block;font-size:10.5px;font-weight:700;color:var(--ink2);margin-top:-4px}
+.top .who::after{content:"";width:14px;height:14px;opacity:.6;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7 7 0 0 0-1.7-1L15 3h-4l-.4 2.6a7 7 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7 7 0 0 0 1.7 1L11 21h4l.4-2.6a7 7 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7 7 0 0 0-1.7-1L15 3h-4l-.4 2.6a7 7 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7 7 0 0 0 1.7 1L11 21h4l.4-2.6a7 7 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z'/%3E%3C/svg%3E") center/contain no-repeat}
 #rec.memo .quick,#rec.memo .markbtn,#rec.memo .marklist{display:none}
 #rec.memo .bottom{justify-content:center;margin-top:auto} #rec.memo .stop{width:96px;height:96px;border-radius:50%}
+#rec{height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#rec .marklist{min-height:48px}
+#rec .rtools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+#rec .rtools button{height:42px;border-radius:14px;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.35);color:#fff;font-weight:800;font-size:14px}
+#rec .rtools button:active{transform:scale(.95)}
+#rec .rnote{background:rgba(255,255,255,.95);border-radius:18px;padding:10px;margin-bottom:10px;color:var(--ink)}
+#rec .rnote textarea{width:100%;border:1px solid var(--hair);border-radius:12px;padding:10px;font-size:17px;background:#fff;color:var(--ink)}
+#rec .rnote .rsave{background:var(--coral);color:#fff} #rec .rnote .rcancel{background:#F3E7DF}
+#rec .quick button.flash{animation:flash .5s var(--ease)}
+@keyframes flash{0%{background:#fff;color:#C83A1E;transform:scale(1.08)}100%{background:rgba(255,255,255,.2);color:#fff;transform:none}}
+#rec.memo .rtools button[data-rt="undo"]{display:none} #rec.memo .rtools{grid-template-columns:1fr 1fr}
+/* short screens (landscape, small phones): drop the orb, keep every control reachable */
+@media (max-height:700px){ #rec .stage{height:110px} #rec .orb,#rec .ripple{width:84px;height:84px} #rec .timer{font-size:44px} }
+@media (max-height:560px){ #rec .stage,#rec canvas{display:none} #rec .timer{font-size:32px;text-align:left} #rec .title{font-size:17px;margin-top:4px}
+  #rec .quick{grid-template-columns:repeat(8,1fr)} #rec .quick button{height:40px;font-size:12px} #rec .marklist{min-height:28px;max-height:60px}
+  #rec .markbtn,#rec .stop{height:54px} #rec .stop{width:54px} #rec.memo .stop{width:72px;height:72px} #rec .warn{display:none} }
 #rec .warn{font-size:13px;text-align:center;margin-top:10px;opacity:.9}
 #rec .lockwarn{background:rgba(0,0,0,.28);border-radius:12px;padding:8px 10px;opacity:1}
 
@@ -256,6 +281,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .rvh{display:flex;align-items:center;gap:9px;color:inherit;text-decoration:none} .rvh b{flex:1;font-size:18px} .rt{font-family:var(--mono);font-size:13px;color:var(--ink2)}
 .rmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
 .rsum{white-space:pre-wrap;color:var(--ink)!important}
+.rtx{margin-top:4px;padding:8px 10px;border-radius:12px;background:var(--glass-hi);border:1px solid var(--hair);font-size:14px;color:var(--ink2);white-space:pre-wrap}
 .repcard{border-radius:28px;padding:18px}
 
 @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
@@ -273,21 +299,30 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 <main id="view"></main>
 
 <!-- recording overlay -->
-<div id="rec" hidden>
+<div id="rec" role="dialog" aria-modal="true" aria-label="Recording" hidden>
   <div class="rh"><span class="dot"></span><span class="mode" id="rec-mode">Meeting recording</span><span style="flex:1"></span><span id="rec-size"></span></div>
   <div class="title" id="rec-title"></div>
   <div class="stage" aria-hidden="true"><span class="ripple"></span><span class="ripple r2"></span><div class="orb" id="rec-orb"></div></div>
   <div class="timer" id="rec-timer">00:00</div>
   <div style="text-align:center;font-size:13px;font-weight:700;opacity:.9" id="rec-by">Recording</div>
   <canvas id="rec-meter" width="600" height="88"></canvas>
-  <div class="marklist" id="rec-marks"></div>
+  <div class="marklist" id="rec-marks" aria-live="polite"></div>
   <div class="quick" id="rec-quick">
     <button data-tag="Price">Price</button><button data-tag="Spec">Spec</button><button data-tag="Lead time">Lead time</button><button data-tag="MOQ">MOQ</button>
     <button data-tag="Sample">Sample</button><button data-tag="Follow-up">Follow-up</button><button data-tag="Question">Question</button><button data-tag="Important">Important</button>
   </div>
+  <div class="rtools" id="rec-tools">
+    <button data-rt="photo" aria-label="Take a photo without stopping">📷 Photo</button>
+    <button data-rt="note" aria-label="Type a note without stopping">✏️ Note</button>
+    <button data-rt="undo" aria-label="Undo the last tag">↩︎ Undo tag</button>
+  </div>
+  <div class="rnote" id="rec-note" hidden>
+    <textarea id="rec-note-text" rows="3" placeholder="e.g. USD 3.20/kg FOB, MOQ 20 t" aria-label="Note text"></textarea>
+    <div class="rowbtns"><button class="btn small rcancel" data-rt="note-cancel">Cancel</button><button class="btn small rsave" data-rt="note-save">Save note</button></div>
+  </div>
   <div class="bottom">
     <button class="markbtn" id="rec-mark">Mark moment</button>
-    <button class="stop" id="rec-stop" aria-label="Stop and save"><i></i></button>
+    <button class="stop" id="rec-stop" aria-label="Stop and save"><i></i><span>Stop</span></button>
   </div>
   <div class="warn lockwarn" id="rec-lockwarn" hidden>This phone can't hold the screen on. Set Settings › Display &amp; Brightness › Auto-Lock › Never.</div>
   <div class="warn">Keep the screen on. Recording stops if the phone locks or you switch apps.</div>
@@ -305,7 +340,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 <input type="file" id="in-photo" accept="image/*" capture="environment" class="sr">
 <input type="file" id="in-video" accept="video/*" capture="environment" class="sr">
 <input type="file" id="in-import" accept="image/*,video/*,audio/*" class="sr" multiple>
-<div id="toast" hidden></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
 /* ---------- data ---------- */
@@ -379,7 +414,8 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 let user = null; try { user = localStorage.getItem('mn.user'); } catch(e){}
 // Personal links (/sharoon/, /naveed/) carry the name in a meta tag, so there is no name picker.
 const FIXED_USER = ((document.querySelector('meta[name="mn-user"]') || {}).content || new URLSearchParams(location.search).get('u') || '').trim();
-if (['Sharoon','Naveed'].includes(FIXED_USER) && user !== FIXED_USER && !sessionStorage.getItem('mn.switched')){ user = FIXED_USER; try { localStorage.setItem('mn.user', user); } catch(e){} }
+let linkTookOver = null;
+if (['Sharoon','Naveed'].includes(FIXED_USER) && user !== FIXED_USER && !sessionStorage.getItem('mn.switched')){ if (user) linkTookOver = user; user = FIXED_USER; try { localStorage.setItem('mn.user', user); } catch(e){} }
 let meetingState = {}; // id -> {checkedIn, at, lat, lng, summary}
 let noteCache = {};    // meetingId -> notes[]
 let urls = [];         // object URLs to revoke on route change
@@ -427,6 +463,10 @@ async function render(){
   if (fresh){ void v.offsetWidth; v.classList.add('enter'); } // replay the entrance animation only on navigation
 }
 let lastRoute = null;
+// Home must never go stale: refresh every 30 s and when the phone wakes, unless the user is busy.
+const refreshHome = () => { const h = location.hash; if ((h === '' || h === '#') && !rec && !starting && !editing() && document.visibilityState === 'visible') render(); };
+setInterval(refreshHome, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(refreshHome, 300); });
 function route(h){
   if (h === '#settings') return renderSettings();
   if (h === '#trip') return renderReport('trip');
@@ -436,15 +476,18 @@ function route(h){
   return renderHome();
 }
 function setTop(title, back){ $('#title').textContent = title; $('#back').hidden = !back; }
-$('#back').onclick = () => { location.hash = ''; };
+// In-app history so ‹ returns to where you came from (e.g. report → visit → back to report).
+const navStack = [location.hash]; let goingBack = false;
+window.addEventListener('hashchange', () => { if (goingBack){ goingBack = false; navStack.pop(); } else navStack.push(location.hash); });
+$('#back').onclick = () => { if (navStack.length > 1){ goingBack = true; history.back(); } else location.hash = ''; };
 $('#who').onclick = () => { location.hash = '#settings'; };
 
 /* ---------- views ---------- */
-function actionsHtml(id){
+function actionsHtml(id, memoId = id){
   return `<div class="actions">
     <button class="hero" data-a="rec" data-m="${id}"><span class="ic">${ICON.meet}</span><span><b>Record meeting</b><span>Supplier talk · translated later</span></span></button>
     <div class="tiles">
-      <button class="act memo" data-a="memo" data-m="${id}"><span class="bub grape">${ICON.memo}</span>Voice note</button>
+      <button class="act memo" data-a="memo" data-m="${memoId}"><span class="bub grape">${ICON.memo}</span>Voice note${memoId !== id ? `<small class="for">for ${pad2(memoId)}</small>` : ''}</button>
       <button class="act" data-a="photo" data-m="${id}"><span class="bub peach">${ICON.cam}</span>Photo</button>
       <button class="act" data-a="video" data-m="${id}"><span class="bub rose">${ICON.vid}</span>Video</button>
       <button class="act" data-a="text" data-m="${id}"><span class="bub honey">${ICON.txt}</span>Note</button>
@@ -460,22 +503,46 @@ function checkinHtml(m){
   if (st && st.checkedIn) return `<div class="checkin"><span class="chip ok">✓ Checked in ${fmtTime(st.at)}${st.lat ? ' · GPS' : ''}</span><button class="btn ghost small" data-a="undo" data-m="${m.id}">Undo</button></div>`;
   return `<div class="checkin"><span class="chip">Not checked in</span><button class="btn primary" data-a="checkin" data-m="${m.id}">${ICON.pin} Check in</button></div>`;
 }
-function reportDay(){ const {m} = currentMeeting(); return m.day; }
+function contbarHtml(){
+  if (!interrupted || Date.now() - interrupted.at > 30*60*1000) return '';
+  const m = MEETINGS.find(x => x.id === interrupted.mid); if (!m) return '';
+  return `<div class="contbar" role="alert"><span>The phone stopped the ${AKIND[interrupted.kind].short} at ${fmtTime(interrupted.at)}. It's saved.</span><button class="btn small" data-a="${interrupted.kind === 'memo' ? 'memo' : 'rec'}" data-m="${m.id}">Continue</button></div>`;
+}
+// A meeting that overruns: the card has moved on, but you may still be at the previous supplier.
+function stillAtHtml(m, why){
+  if (why !== 'Now' && why !== 'Next') return '';
+  const today = MEETINGS.filter(x => x.date === m.date), i = today.indexOf(m), prev = today[i - 1];
+  if (!prev || !meetingState[prev.id]?.checkedIn || meetingState[m.id]?.checkedIn) return '';
+  const [, end] = prev.time.split('–'); if (cn(Date.now()).mins > mins(end) + 45) return '';
+  return `<a class="stillat" href="#m${prev.id}">Still at ${esc(prev.name)}? Record there ›</a>`;
+}
+function reportDay(){
+  const today = cn(Date.now()).date, days = [...new Set(MEETINGS.map(m => m.date))];
+  const d = days.includes(today) ? today : days.filter(x => x < today).at(-1) || days[0];
+  return MEETINGS.find(m => m.date === d).day;
+}
+// A voice note belongs to the visit you are at or have just left, never to one you haven't reached.
+function memoTarget(){
+  const {date: today, mins: cur} = cn(Date.now());
+  const started = MEETINGS.filter(m => m.date === today && mins(m.time.split('–')[0]) <= cur);
+  return (started.at(-1) || currentMeeting().m).id;
+}
 
 function renderHome(){
   setTop('Mill Notes', false);
   const {m, why} = currentMeeting();
   const days = ['02','03','04','05'];
   const rd = reportDay();
-  let html = `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Mill Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>
+  let html = contbarHtml() + `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Mill Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>
   <section class="now glass"><div class="eyebrow">${why === 'Now' ? '<span class="live"></span>' : ''}${why} · ${m.dow} ${m.time}</div>
     <h2><span class="num">${String(m.id).padStart(2,'0')}</span>${esc(m.name)}</h2>
     <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
-    <div style="margin-top:14px">${actionsHtml(m.id)}</div>${checkinHtml(m)}
+    <div style="margin-top:14px">${actionsHtml(m.id, memoTarget())}</div>${checkinHtml(m)}
+    ${stillAtHtml(m, why)}
     <div style="margin-top:12px;text-align:right"><a href="#m${m.id}" class="btn ghost small">Open visit ›</a></div>
   </section>
   <div class="reportbar">
-    <a href="#day${rd}" class="repbtn glass"><span class="bub honey">${ICON.rep}</span><span>${rd === m.day && m.date === cn(Date.now()).date ? "Today's" : `${MEETINGS.find(x => x.day === rd).dow}'s`} report<small>${DAYLABEL[rd].split(' · ')[1]}</small></span></a>
+    <a href="#day${rd}" class="repbtn glass"><span class="bub honey">${ICON.rep}</span><span>${MEETINGS.find(x => x.day === rd).date === cn(Date.now()).date ? "Today's" : `${MEETINGS.find(x => x.day === rd).dow}'s`} report<small>${DAYLABEL[rd].split(' · ')[1]}</small></span></a>
     <a href="#trip" class="repbtn glass"><span class="bub peach">${ICON.trip}</span><span>Trip report<small>All 12 visits</small></span></a>
   </div>`;
   for (const d of days){
@@ -498,7 +565,7 @@ function renderMeeting(id){
   setTop(`${String(id).padStart(2,'0')} · ${m.name}`, true);
   const st = meetingState[id] || {};
   const notes = (noteCache[id] || []).slice().sort((a,b) => b.createdAt - a.createdAt);
-  let html = `<section class="mhead glass"><div class="eyebrow">Visit ${String(id).padStart(2,'0')} · ${m.dow} ${m.time}</div>
+  let html = contbarHtml() + `<section class="mhead glass"><div class="eyebrow">Visit ${String(id).padStart(2,'0')} · ${m.dow} ${m.time}</div>
     <h2>${esc(m.name)}</h2>
     <div class="meta">${esc(m.detail)}${m.contact ? `<br><b>${esc(m.contact)}</b> <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
     ${checkinHtml(m)}</section>
@@ -506,14 +573,15 @@ function renderMeeting(id){
     <div id="composer-slot"></div>
     <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span class="chip" id="sum-state" style="font-size:11px" ${st.summary ? '' : 'hidden'}>saved</span></div>
       <textarea class="note" id="summary" placeholder="Two lines after the visit: what they offer, price indication, next step…">${esc(st.summary || '')}</textarea></section>
-    <div class="section-h"><h3>Notes (${notes.length})</h3><button class="btn ghost small" data-a="export" data-m="${id}">Export visit</button></div>`;
+    <div class="section-h"><h3>Notes (${notes.length})</h3><span style="display:flex;gap:8px"><button class="btn ghost small" data-a="import" data-m="${id}">Import</button><button class="btn ghost small" data-a="export" data-m="${id}">Export visit</button></span></div>`;
   if (!notes.length) html += `<div class="empty">Nothing yet. Tap <b>Record meeting</b> as the meeting starts, or <b>Voice note</b> for your own memo.</div>`;
   html += notes.map(noteHtml).join('');
-  html += `<div style="text-align:center;margin-top:6px"><button class="btn ghost small" data-a="import" data-m="${id}">Import from camera roll</button></div>`;
   $('#view').innerHTML = html;
   const sum = $('#summary'); let sh;
+  const flush = () => { if (!sh) return; clearTimeout(sh); sh = null; patchMeeting(id, {summary: sum.value}); };
+  sum.addEventListener('blur', flush); summaryFlush = flush;
   sum.addEventListener('input', () => { clearTimeout(sh); const ss = $('#sum-state'); ss.hidden = false; ss.textContent = '…'; sh = setTimeout(async () => {
-    const v = sum.value; await patchMeeting(id, {summary: v}); const s = $('#sum-state'); if (s) s.textContent = 'saved'; }, 500); });
+    sh = null; const v = sum.value; await patchMeeting(id, {summary: v}); const s = $('#sum-state'); if (s) s.textContent = 'saved'; }, 500); });
   if (pendingComposer && pendingComposer.mid === id){ const p = pendingComposer; pendingComposer = null; openComposer(p.mid, p.existing); }
 }
 /* Read-modify-write on the stored row, so concurrent saves (summary, GPS, undo) never overwrite each other. */
@@ -525,11 +593,13 @@ function noteHtml(n){
   const ak = n.type === 'audio' ? akind(n) : null;
   const k = ak ? AKIND[ak].icon : {photo:'cam', video:'vid', text:'txt'}[n.type];
   let body = '';
-  if (n.type === 'text') body = `<p>${esc(n.text)}</p>`;
+  const long = t => t && t.length > 420 ? ' class="clamp"' : '';
+  const more = t => t && t.length > 420 ? `<button class="morebtn" data-more>Show more</button>` : '';
+  if (n.type === 'text') body = n.text ? `<p${long(n.text)}>${esc(n.text)}</p>${more(n.text)}` : `<p style="color:var(--ink2)"><i>Tag only, no text</i></p>`;
   if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">`; }
   if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>`; }
   if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" controls preload="metadata"></audio>`
-    + (n.marks && n.marks.length ? `<div class="marks">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtDur(x.t)}</b> ${esc(x.tag)}</button>`).join('')}</div>` : '')
+    + (n.marks && n.marks.length ? `<div class="marks${n.marks.length > 12 ? ' collapsed' : ''}">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtDur(x.t)}</b> ${esc(x.tag)}</button>`).join('')}</div>${n.marks.length > 12 ? `<button class="morebtn" data-more-marks>Show all ${n.marks.length} tags</button>` : ''}` : '')
     + `<details><summary>${ak === 'memo' ? 'Transcript' : 'Chinese transcript / translation'}${n.transcript ? ' ✓' : ''}</summary>
        <textarea class="transcript" data-tr="${n.id}" placeholder="${ak === 'memo' ? 'Optional: paste a transcript of your voice note.' : 'Paste the Mill Transcribe result here, or leave it for after the trip.'}">${esc(n.transcript || '')}</textarea></details>`; }
   if (n.type !== 'text' && n.text) body += `<p style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>`;
@@ -587,6 +657,12 @@ document.addEventListener('click', async (e) => {
   if (a === 'repshare') return shareReport(b.dataset.s);
   if (a === 'repcopy') return copyReport(b.dataset.s);
 });
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-more],[data-more-marks]'); if (!b) return;
+  if (b.hasAttribute('data-more')) b.previousElementSibling?.classList.remove('clamp');
+  else b.previousElementSibling?.classList.remove('collapsed');
+  b.remove();
+});
 // Tap a mark: play the recording from 5 s before that moment.
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-seek]'); if (!b) return;
@@ -596,11 +672,13 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', async (e) => {
   const t = e.target; if (!t.matches('#in-photo,#in-video,#in-import')) return;
   const files = [...t.files]; t.value = ''; if (!files.length || pendingMeeting == null) return;
-  let saved = 0;
+  let saved = 0; const big = files.reduce((a, f) => a + f.size, 0) > 8e6;
+  if (big) toast(`Saving ${files.length > 1 ? files.length + ' files' : 'video'}… keep the app open`, 15000);
   try {
     for (const f of files){
       const type = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : 'photo';
-      await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: Date.now(), by: user, text:'', tags:[], name: f.name}); saved++;
+      const fromRoll = t.id === 'in-import' && f.lastModified && f.lastModified < Date.now() - 60000; // camera-roll item: keep when it was taken
+      await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: fromRoll ? f.lastModified : Date.now(), by: user, text:'', tags:[], name: f.name}); saved++;
     }
     toast(saved === 1 ? 'Saved' : `Saved ${saved} files`);
   } catch(err){ toast(`Saved ${saved} of ${files.length}. Storage error: ${(err && err.message) || err}`, 6000); }
@@ -629,7 +707,11 @@ async function checkIn(mid, silent){
   ask(1);
 }
 
-let pendingComposer = null; // opened by renderMeeting once the visit page exists
+let pendingComposer = null;
+let summaryFlush = null; // saves a summary typed in the last half second when the app is closed or hidden
+const flushAll = () => { try { summaryFlush?.(); } catch(e){} };
+window.addEventListener('pagehide', flushAll);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAll(); }); // opened by renderMeeting once the visit page exists
 function editing(){ const a = document.activeElement; return !!(document.querySelector('#ntext') || document.querySelector('.cap') || (a && a.tagName === 'TEXTAREA')); }
 function openComposer(mid, existing){
   const slot = $('#composer-slot');
@@ -671,7 +753,6 @@ async function deleteNote(nid, btn){
 }
 
 /* ---------- reports (day + whole trip), built on the phone from local notes, works offline ---------- */
-const DAYS = ['02','03','04','05'];
 const pad2 = n => String(n).padStart(2,'0');
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 // One visit → everything a report needs.
@@ -680,25 +761,26 @@ function visitFacts(m){
   const ns = (noteCache[m.id] || []).slice().sort((a,b) => a.createdAt - b.createdAt);
   const items = []; // {tag, text, by, at, kind}
   const other = []; // untagged typed notes and captions
-  let recSecs = 0, memoSecs = 0, transcripts = 0; const memos = [];
+  let recSecs = 0, memoSecs = 0, transcripts = 0; const memos = [], meetings = [];
   for (const n of ns){
     const ak = n.type === 'audio' ? akind(n) : null;
     if (ak === 'meeting'){ recSecs += n.duration || 0; if (n.transcript) transcripts++;
+      meetings.push({at: n.createdAt, dur: n.duration || 0, by: n.by, caption: (n.text || '').trim(), transcript: (n.transcript || '').trim(), marks: (n.marks || []).length});
       for (const k of (n.marks || [])) items.push({tag: TAGS.includes(k.tag) ? k.tag : 'Marked', text: `at ${fmtDur(k.t)} in the ${fmtTime(n.createdAt)} meeting recording`, by: n.by, at: n.createdAt + k.t*1000, kind:'mark'}); }
     if (ak === 'memo'){ memoSecs += n.duration || 0; memos.push({at: n.createdAt, dur: n.duration || 0, by: n.by, text: (n.text || '').trim(), transcript: (n.transcript || '').trim()}); }
     const text = (n.text || '').trim();
     const what = ak ? AKIND[ak].short : n.type;
-    const label = n.type === 'text' ? text : text ? `${what} — ${text}` : `${what} at ${fmtTime(n.createdAt)}`;
+    const label = n.type === 'text' ? (text || '(tag only, no text)') : text ? `${what} — ${text}` : `${what} at ${fmtTime(n.createdAt)}`;
     if (ak === 'memo' && !(n.tags && n.tags.length)) continue; // untagged voice notes are listed in their own section
     if (n.tags && n.tags.length) n.tags.forEach(t => items.push({tag: t, text: label, by: n.by, at: n.createdAt, kind: n.type}));
     else if (text) other.push({text: label, by: n.by, at: n.createdAt});
   }
   const c = {audio:0, meeting:0, memo:0, photo:0, video:0, text:0}; ns.forEach(n => { c[n.type]++; if (n.type === 'audio') c[akind(n)]++; });
-  return {m, st, items, other, memos, c, recSecs, memoSecs, transcripts, empty: !ns.length && !st.summary && !st.checkedIn};
+  return {m, st, items, other, memos, meetings, c, recSecs, memoSecs, transcripts, empty: !ns.length && !st.summary && !st.checkedIn};
 }
 function byTag(facts){ const out = {}; for (const f of facts) for (const it of f.items) (out[it.tag] ||= []).push({...it, m: f.m}); return out; }
 const TOPIC_ORDER = ['Price','Spec','Lead time','MOQ','Sample','Follow-up','Question','Important','Marked'];
-function fmtHours(s){ s = Math.round(s); const h = Math.floor(s/3600), m = Math.round((s%3600)/60); return h ? `${h} h ${m} min` : `${m} min`; }
+function fmtHours(s){ s = Math.round(s); if (s < 60) return `${s} s`; const h = Math.floor(s/3600), m = Math.round((s%3600)/60); return h ? `${h} h ${m} min` : `${m} min`; }
 function reportScope(scope){
   const day = scope.startsWith('day') ? scope.slice(3) : null;
   const ms = day ? MEETINGS.filter(m => m.day === day) : MEETINGS;
@@ -740,6 +822,7 @@ function reportMarkdown(scope){
     s += `Captured: ${plural(f.c.meeting,'meeting recording')} (${fmtHours(f.recSecs)}${f.transcripts ? `, ${f.transcripts} with transcript` : ''}) · ${plural(f.c.memo,'voice note')} · ${plural(f.c.photo,'photo')} · ${plural(f.c.video,'video')} · ${plural(f.c.text,'note')}\n`;
     s += `\n**Summary:** ${f.st.summary ? f.st.summary.trim() : '_not written_'}\n`;
     if (f.items.length){ s += `\n**Key points**\n` + f.items.sort((a,b) => a.at - b.at).map(it => `- [${it.tag}] ${it.text}`).join('\n') + '\n'; }
+    if (f.meetings.some(r => r.caption || r.transcript)){ s += `\n**Meeting recordings**\n` + f.meetings.map(r => `- ${fmtTime(r.at)} · ${fmtHours(r.dur)} · ${plural(r.marks,'tag')}${r.caption ? ` — ${r.caption}` : ''}${r.transcript ? `\n\n  Transcript / translation:\n\n  > ${r.transcript.replace(/\n+/g, '\n  > ')}\n` : ''}`).join('\n') + '\n'; }
     if (f.memos.length){ s += `\n**Voice notes (to summarise)**\n` + f.memos.map(v => `- ${fmtTime(v.at)} · ${fmtDur(v.dur)}${v.by ? ` · ${v.by}` : ''}${v.text ? ` — ${v.text}` : ''}${v.transcript ? `\n  > ${v.transcript.replace(/\n/g,' ')}` : ''}`).join('\n') + '\n'; }
     if (f.other.length){ s += `\n**Other notes**\n` + f.other.map(o => `- ${o.text}`).join('\n') + '\n'; }
   }
@@ -773,6 +856,7 @@ function renderReport(scope){
         <span>${f.c.meeting ? `${plural(f.c.meeting,'meeting recording')} · ${fmtHours(f.recSecs)}` : 'no meeting recording'}${f.c.memo ? ` · ${plural(f.c.memo,'voice note')}` : ''} · ${plural(f.c.photo,'photo')}${f.c.video ? ` · ${plural(f.c.video,'video')}` : ''}${f.c.text ? ` · ${plural(f.c.text,'note')}` : ''}</span></div>
       <p class="rsum">${f.st.summary ? esc(f.st.summary) : '<i>No summary yet</i>'}</p>
       ${f.items.length ? `<ul class="rl">${f.items.sort((a,b) => a.at - b.at).map(it => `<li><span class="rtg">${esc(it.tag)}</span> ${esc(it.text)}</li>`).join('')}</ul>` : ''}
+      ${f.meetings.filter(r => r.caption || r.transcript).length ? `<ul class="rl">${f.meetings.filter(r => r.caption || r.transcript).map(r => `<li><span class="rtg" style="background:var(--coral);color:#fff">Meeting</span> ${fmtTime(r.at)}${r.caption ? ` — ${esc(r.caption)}` : ''}${r.transcript ? `<div class="rtx">${esc(r.transcript.length > 320 ? r.transcript.slice(0, 320) + '…' : r.transcript)}</div>` : ''}</li>`).join('')}</ul>` : ''}
       ${f.memos.length ? `<ul class="rl">${f.memos.map(v => `<li><span class="rtg memo">Voice note</span> ${fmtTime(v.at)} · ${fmtDur(v.dur)}${v.text ? ` — ${esc(v.text)}` : ''}</li>`).join('')}</ul>` : ''}
       ${f.other.length ? `<ul class="rl rother">${f.other.map(o => `<li>${esc(o.text)}</li>`).join('')}</ul>` : ''}</section>`;
   }
@@ -838,7 +922,8 @@ async function exportJson(){
 
 /* ---------- recording ---------- */
 let rec = null;          // the live recording: {mr, stream, recId, start, marks, meetingId, by, mime, bytes, pending, ctx, timer, raf, lock}
-let starting = false;    // blocks a double tap on Record while the mic is being opened
+let starting = false;
+let interrupted = null; // {mid, kind, at}: the phone stopped a recording; offer one-tap continue    // blocks a double tap on Record while the mic is being opened
 const finalized = new Set(); // recIds already saved (or being saved): stops double saves
 function pickMime(){ for (const t of ['audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/webm;codecs=opus','audio/webm','audio/ogg']) { try { if (MediaRecorder.isTypeSupported(t)) return t; } catch(e){} } return ''; }
 function saveRecInfo(r){ try { localStorage.setItem('mn.rec', JSON.stringify({recId:r.recId, meetingId:r.meetingId, start:r.start, by:r.by, mime:r.mime, marks:r.marks, kind:r.kind})); } catch(e){} }
@@ -852,7 +937,7 @@ async function startRecording(mid, kind = 'meeting'){
   try {
     let stream;
     try { stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:true}}); }
-    catch(e){ try { ctx && ctx.close(); } catch(_){} toast('Microphone blocked. Settings › Apps › Safari › Microphone › Allow', 5000); return; }
+    catch(e){ try { ctx && ctx.close(); } catch(_){} toast('Microphone blocked. Settings › Apps › Safari › Microphone › Allow, then reopen the app.', 9000); return; }
     const mime = pickMime(); const mr = new MediaRecorder(stream, mime ? {mimeType: mime, audioBitsPerSecond: 64000} : undefined);
     const recId = Date.now(); const m = MEETINGS.find(x => x.id === mid);
     const self = rec = {mr, stream, recId, start: recId, marks:[], meetingId: mid, by: user, bytes:0, mime: mr.mimeType || mime, pending: Promise.resolve(), ctx, kind};
@@ -865,7 +950,10 @@ async function startRecording(mid, kind = 'meeting'){
         .catch(() => { if (!self.warned){ self.warned = true; toast('Storage error: the recording is not being saved. Stop and free up space.', 7000); } });
       const s = $('#rec-size'); if (s) s.textContent = fmtBytes(self.bytes);
     };
-    mr.onstop = () => { self.stopAt = self.stopAt || Date.now(); finalizeRecording(self.recId, self.meetingId, self.start, self.marks, self.mime, false, self.by, self.stopAt, self); };
+    mr.onstop = () => { if (!self.stopping) self.interrupted = true; self.stopAt = self.stopAt || Date.now(); finalizeRecording(self.recId, self.meetingId, self.start, self.marks, self.mime, false, self.by, self.stopAt, self); };
+    // If iOS takes the microphone away (call, camera, Siri), stop cleanly and offer to continue.
+    stream.getAudioTracks().forEach(tr => tr.addEventListener('ended', () => { if (rec === self && !self.stopping){ self.interrupted = true; self.stopAt = Date.now(); try { if (mr.state !== 'inactive') mr.stop(); } catch(e){} } }));
+    interrupted = null;
     mr.start(4000);
     // UI
     $('#rec').classList.toggle('memo', kind === 'memo');
@@ -876,7 +964,7 @@ async function startRecording(mid, kind = 'meeting'){
     self.timer = setInterval(() => { $('#rec-timer').textContent = fmtDur((Date.now() - self.start)/1000); }, 500);
     meter(self);
     await lockScreen(self);
-    if (!meetingState[mid]?.checkedIn) checkIn(mid, true);
+    if (kind === 'meeting' && !meetingState[mid]?.checkedIn) checkIn(mid, true); // a memo is a reflection, not proof you are there
   } finally { starting = false; }
 }
 async function lockScreen(r){
@@ -895,12 +983,36 @@ function meter(r){
     draw();
   } catch(e){}
 }
-function addMark(tag){ if (!rec) return; const t = (Date.now() - rec.start)/1000; rec.marks.push({t, tag}); saveRecInfo(rec); const d = document.createElement('div'); d.innerHTML = `<b>${fmtDur(t)}</b> ${esc(tag)}`; $('#rec-marks').prepend(d); if (navigator.vibrate) navigator.vibrate(30); }
+function addMark(tag){
+  if (!rec) return; const t = (Date.now() - rec.start)/1000; rec.marks.push({t, tag}); saveRecInfo(rec);
+  const d = document.createElement('div'); d.innerHTML = `<b>${fmtDur(t)}</b> ${esc(tag)} ✓`; $('#rec-marks').prepend(d);
+  const btn = document.querySelector(`#rec-quick button[data-tag="${CSS.escape(tag)}"]`); // visible confirmation (iOS has no vibration API)
+  if (btn){ btn.classList.remove('flash'); void btn.offsetWidth; btn.classList.add('flash'); }
+  navigator.vibrate?.(30);
+}
 $('#rec-mark').onclick = () => addMark('Mark');
+$('#rec-tools').addEventListener('click', e => {
+  const b = e.target.closest('[data-rt]'); if (!b || !rec) return;
+  const r = rec, t = b.dataset.rt;
+  if (t === 'photo'){ pendingMeeting = r.meetingId; addMark('Photo'); $('#in-photo').click(); return; } // recording keeps running
+  if (t === 'note'){ $('#rec-note').hidden = false; $('#rec-note-text').focus(); return; }
+  if (t === 'undo'){ const m = r.marks.pop(); if (!m) return toast('No tag to undo'); saveRecInfo(r); $('#rec-marks').firstElementChild?.remove(); toast(`Removed ${m.tag} at ${fmtDur(m.t)}`); }
+});
+$('#rec-note').addEventListener('click', async e => {
+  const b = e.target.closest('[data-rt]'); if (!b) return;
+  const box = $('#rec-note'), ta = $('#rec-note-text');
+  if (b.dataset.rt === 'note-cancel'){ box.hidden = true; ta.value = ''; return; }
+  if (b.dataset.rt === 'note-save' && rec){
+    const text = ta.value.trim(); if (!text){ box.hidden = true; return; }
+    const r = rec; addMark('Note');
+    await add('notes', {meetingId: r.meetingId, type:'text', text, tags:[], createdAt: Date.now(), by: user, during: r.recId});
+    ta.value = ''; box.hidden = true; toast('Note saved, still recording');
+  }
+});
 $('#rec-quick').addEventListener('click', e => { const b = e.target.closest('button'); if (b) addMark(b.dataset.tag); });
 $('#rec-stop').onclick = () => stopRecording();
 function stopRecording(){
-  if (!rec) return; const r = rec; r.stopAt = Date.now();
+  if (!rec || rec.stopping) return; const r = rec; r.stopping = true; r.stopAt = Date.now();
   const fin = () => finalizeRecording(r.recId, r.meetingId, r.start, r.marks, r.mime, false, r.by, r.stopAt, r);
   try { if (r.mr.state !== 'inactive') { r.mr.stop(); setTimeout(fin, 4000); } else fin(); } // onstop normally saves; the timer is a backstop
   catch(e){ fin(); }
@@ -914,8 +1026,8 @@ function teardown(r){
 }
 async function finalizeRecording(recId, mid, start, marks, mime, recovered, by, stopAt, live, kind){
   if (finalized.has(recId)) return; finalized.add(recId);
-  if (live) teardown(live);
-  $('#rec').hidden = true;
+  if (live){ teardown(live); if (live.interrupted) interrupted = {mid, kind: live.kind || 'meeting', at: Date.now()}; }
+  $('#rec').hidden = true; $('#rec-note').hidden = true;
   try {
     if (live) { try { await live.pending; } catch(e){} }
     const parts = (await getAll('parts', 'rec', recId)).sort((a,b) => a.seq - b.seq);
@@ -952,10 +1064,14 @@ async function recoverIfNeeded(){
   }
 }
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !rec && interrupted && Date.now() - interrupted.at < 10*60*1000 && !interrupted.told){
+    interrupted.told = true; toast(`The phone stopped the ${AKIND[interrupted.kind].short} while you were away. What was recorded is saved.`, 6000);
+  }
   if (!rec) return;
   const r = rec;
   if (document.visibilityState === 'hidden'){ try { if (r.mr.state === 'recording') r.mr.requestData(); } catch(e){} return; } // flush the last seconds
   if (r.mr.state === 'inactive'){
+    r.interrupted = true;
     toast('Recording stopped when the screen locked or you left the app. What was recorded is saved.', 5000);
     setTimeout(() => finalizeRecording(r.recId, r.meetingId, r.start, r.marks, r.mime, false, r.by, r.stopAt, r), 1500); // after onstop's last chunk
   } else lockScreen(r); // iOS drops the wake lock whenever the page is hidden
@@ -963,7 +1079,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
 /* ---------- boot ---------- */
-const APP_VERSION = '2.1';
+const APP_VERSION = '2.2';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
@@ -980,6 +1096,7 @@ try { navigator.storage && navigator.storage.persist && navigator.storage.persis
 (async () => {
   try { await recoverIfNeeded(); } catch(e){ toast('Could not recover an earlier recording: ' + ((e && e.message) || e), 6000); }
   if (!user) $('#overlay').hidden = false;
+  if (linkTookOver) setTimeout(() => toast(`This is ${user}'s link. If you're ${linkTookOver}, open your own link instead.`, 7000), 600);
   try { await render(); } catch(e){ $('#view').innerHTML = `<div class="card"><h2>Something went wrong</h2><p>${esc(e && e.message)}</p><p>Your notes are still stored. Close and reopen the app.</p></div>`; }
 })();
 </script>
