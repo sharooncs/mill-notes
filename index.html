@@ -70,7 +70,22 @@ main{padding:12px max(16px,env(safe-area-inset-right)) calc(var(--sab) + 28px) m
 .chip.amber{background:rgba(246,166,35,.14);color:var(--amber);border-color:transparent}
 
 /* day list */
-.day h3{margin:4px 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700;display:flex;justify-content:space-between}
+.day h3{margin:4px 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dayrep{flex:none;font-size:12px;letter-spacing:0;text-transform:none;color:var(--amber);text-decoration:none;padding:8px 10px;margin:-8px -6px -8px 0;border-radius:10px}
+/* reports */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats div{background:var(--panel2);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column}
+.stats b{font-size:22px;font-family:var(--mono)} .stats span{font-size:13px;color:var(--mute)}
+.rh3{margin:0;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.rtag{font-size:13px;font-weight:700;color:var(--amber);margin-top:4px}
+.rl{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.rl.rother{color:var(--mute)}
+.rv{color:var(--blue);text-decoration:none;font-weight:700}
+.rby{font-size:12px;color:var(--mute)}
+.rtg{font-size:12px;font-weight:700;color:var(--amber);background:rgba(246,166,35,.12);padding:2px 7px;border-radius:999px}
+.rvh{display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none} .rvh .num{margin:0;flex:none} .rvh b{flex:1;font-size:18px} .rt{font-family:var(--mono);font-size:13px;color:var(--mute)}
+.rmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--mute)}
+.rsum{white-space:pre-wrap;color:var(--fg)!important}
 .row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 12px;border-radius:14px;background:var(--panel);border:1px solid var(--line);margin-bottom:8px}
 .row .num{flex:none;width:32px;height:32px;font-size:14px;margin:0}
 .row .t{flex:1;min-width:0}
@@ -306,6 +321,8 @@ async function render(){
   const h = location.hash;
   $('#who').textContent = user || 'Name';
   if (h === '#settings') return renderSettings();
+  if (h === '#trip') return renderReport('trip');
+  const dm = h.match(/^#day(0[2-5])$/); if (dm) return renderReport('day' + dm[1]);
   const mm = h.match(/^#m(\d+)$/);
   if (mm) return renderMeeting(Number(mm[1]));
   renderHome();
@@ -345,7 +362,7 @@ function renderHome(){
   </section>`;
   for (const d of days){
     const ms = MEETINGS.filter(x => x.day === d);
-    html += `<section class="day"><h3><span>${DAYLABEL[d]}</span></h3>` + ms.map(x => {
+    html += `<section class="day"><h3><span>${DAYLABEL[d]}</span><a href="#day${d}" class="dayrep">Day report ›</a></h3>` + ms.map(x => {
       const st = meetingState[x.id]; const c = counts(x.id);
       return `<a href="#m${x.id}" class="row ${st && st.checkedIn ? 'done' : ''} ${x.id === m.id ? 'active' : ''}" style="text-decoration:none;color:inherit">
         <span class="num">${String(x.id).padStart(2,'0')}</span>
@@ -354,6 +371,7 @@ function renderHome(){
         <span class="chev">›</span></a>`;
     }).join('') + `</section>`;
   }
+  html += `<a href="#trip" class="btn ghost" style="text-decoration:none;margin-top:4px">Trip report: all 12 visits ›</a>`;
   $('#view').innerHTML = html;
 }
 
@@ -419,7 +437,8 @@ async function renderSettings(){
     <section class="card"><h2>Export</h2>
       <p>Per visit: open the visit and tap <b>Export visit</b>. It opens the share sheet with the audio, photos, video and a text file of the notes. Send to Files, AirDrop, Claude, or a Shortcut.</p>
       <button class="btn primary" data-a="exporttext">Copy all notes as text</button>
-      <button class="btn ghost" data-a="exportjson">Share notes as JSON</button></section>
+      <button class="btn ghost" data-a="exportjson">Share notes as JSON</button>
+      <a href="#trip" class="btn ghost" style="text-decoration:none">Trip report ›</a></section>
     <section class="card"><h2>Chinese transcription on the phone</h2>
       <p>Open an audio note › <b>Share</b> › <b>Mill Transcribe</b> (Shortcuts app: Transcribe Audio → Translate Text). Paste the result into the note's Transcript box. Works offline.</p></section>
     <section class="card"><div class="kv"><span>App version</span><b>${APP_VERSION}</b></div><div class="kv"><span>Connection</span><b id="net-txt">${navigator.onLine ? 'online' : 'offline'}</b></div></section>`;
@@ -443,6 +462,8 @@ document.addEventListener('click', async (e) => {
   if (a === 'export') return exportMeeting(mid);
   if (a === 'exporttext') return exportText();
   if (a === 'exportjson') return exportJson();
+  if (a === 'repshare') return shareReport(b.dataset.s);
+  if (a === 'repcopy') return copyReport(b.dataset.s);
 });
 // Tap a mark: play the recording from 5 s before that moment.
 document.addEventListener('click', (e) => {
@@ -526,6 +547,110 @@ async function deleteNote(nid, btn){
   if (btn.dataset.armed){ await del('notes', nid); toast('Deleted'); render(); return; }
   btn.dataset.armed = '1'; btn.textContent = 'Tap again to delete'; setTimeout(() => { if (btn.isConnected){ delete btn.dataset.armed; btn.textContent = 'Delete'; } }, 2500);
 }
+
+/* ---------- reports (day + whole trip), built on the phone from local notes, works offline ---------- */
+const DAYS = ['02','03','04','05'];
+const pad2 = n => String(n).padStart(2,'0');
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+// One visit → everything a report needs.
+function visitFacts(m){
+  const st = meetingState[m.id] || {};
+  const ns = (noteCache[m.id] || []).slice().sort((a,b) => a.createdAt - b.createdAt);
+  const items = []; // {tag, text, by, at, kind}
+  const other = []; // untagged typed notes and captions
+  let recSecs = 0, transcripts = 0;
+  for (const n of ns){
+    if (n.type === 'audio'){ recSecs += n.duration || 0; if (n.transcript) transcripts++;
+      for (const k of (n.marks || [])) items.push({tag: TAGS.includes(k.tag) ? k.tag : 'Marked', text: `at ${fmtDur(k.t)} in the ${fmtTime(n.createdAt)} recording`, by: n.by, at: n.createdAt + k.t*1000, kind:'mark'}); }
+    const text = (n.text || '').trim();
+    const label = n.type === 'text' ? text : text ? `${n.type} — ${text}` : `${n.type} at ${fmtTime(n.createdAt)}`;
+    if (n.tags && n.tags.length) n.tags.forEach(t => items.push({tag: t, text: label, by: n.by, at: n.createdAt, kind: n.type}));
+    else if (text) other.push({text: label, by: n.by, at: n.createdAt});
+  }
+  const c = {audio:0, photo:0, video:0, text:0}; ns.forEach(n => c[n.type]++);
+  return {m, st, items, other, c, recSecs, transcripts, empty: !ns.length && !st.summary && !st.checkedIn};
+}
+function byTag(facts){ const out = {}; for (const f of facts) for (const it of f.items) (out[it.tag] ||= []).push({...it, m: f.m}); return out; }
+const TOPIC_ORDER = ['Price','Spec','Lead time','MOQ','Sample','Follow-up','Question','Important','Marked'];
+function fmtHours(s){ s = Math.round(s); const h = Math.floor(s/3600), m = Math.round((s%3600)/60); return h ? `${h} h ${m} min` : `${m} min`; }
+function reportScope(scope){
+  const day = scope.startsWith('day') ? scope.slice(3) : null;
+  const ms = day ? MEETINGS.filter(m => m.day === day) : MEETINGS;
+  const facts = ms.map(visitFacts);
+  const title = day ? `Day report · ${DAYLABEL[day]}` : 'Trip report · China foil-mill tour, 27–30 Oct 2026';
+  const file = day ? `MillNotes_Day${day}_${ms[0].dow}${ms[0].date.slice(8)}Oct_${user || ''}.md` : `MillNotes_TripReport_${user || ''}.md`;
+  return {day, ms, facts, title, file};
+}
+function totals(facts){
+  const t = {visits: facts.length, checked: 0, audio:0, photo:0, video:0, text:0, recSecs:0, summaries:0};
+  for (const f of facts){ if (f.st.checkedIn) t.checked++; if (f.st.summary) t.summaries++; t.recSecs += f.recSecs; for (const k of ['audio','photo','video','text']) t[k] += f.c[k]; }
+  return t;
+}
+
+/* Markdown, for sharing to Files / AirDrop / Claude */
+function reportMarkdown(scope){
+  const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
+  let s = `# ${R.title}\n\nPrepared from ${user || 'this phone'}'s notes on this phone · generated ${fmtDateTime(Date.now())}\n\n`;
+  s += `## At a glance\n\n- Visits: ${t.checked} of ${t.visits} checked in\n- Recordings: ${t.audio} (${fmtHours(t.recSecs)}) · photos ${t.photo} · videos ${t.video} · typed notes ${t.text}\n- Summaries written: ${t.summaries} of ${t.visits}\n`;
+  const missing = R.facts.filter(f => !f.st.summary).map(f => pad2(f.m.id)); if (missing.length) s += `- Missing summary: visits ${missing.join(', ')}\n`;
+  if (!R.day){
+    s += `\n| # | Date | Supplier | Checked in | Rec | Photos | Summary |\n|---|---|---|---|---|---|---|\n`;
+    for (const f of R.facts) s += `| ${pad2(f.m.id)} | ${f.m.dow} ${f.m.date.slice(8)} Oct | ${f.m.name} | ${f.st.checkedIn ? fmtTime(f.st.at) : '—'} | ${f.c.audio ? fmtHours(f.recSecs) : '—'} | ${f.c.photo || '—'} | ${(f.st.summary || '').split('\n')[0].replace(/\|/g,'/') || '—'} |\n`;
+  }
+  for (const tag of ['Follow-up','Question']) if (topics[tag]) {
+    s += `\n## ${tag === 'Follow-up' ? 'Follow-ups' : 'Open questions'}\n\n` + topics[tag].map(it => `- [ ] **${pad2(it.m.id)} ${it.m.name}:** ${it.text}${it.by ? ` (${it.by})` : ''}`).join('\n') + '\n';
+  }
+  s += `\n## By topic\n`;
+  let any = false;
+  for (const tag of TOPIC_ORDER) if (topics[tag] && !['Follow-up','Question'].includes(tag)) { any = true;
+    s += `\n### ${tag}\n` + topics[tag].map(it => `- **${pad2(it.m.id)} ${it.m.name}:** ${it.text}`).join('\n') + '\n'; }
+  if (!any) s += `\nNothing tagged yet.\n`;
+  let curDay = null;
+  s += `\n## Visits\n`;
+  for (const f of R.facts){
+    if (!R.day && f.m.day !== curDay){ curDay = f.m.day; s += `\n### ${DAYLABEL[curDay]}\n`; }
+    s += `\n#### ${pad2(f.m.id)} · ${f.m.name} · ${f.m.time}\n${f.m.detail}${f.m.contact ? ` · ${f.m.contact} ${f.m.phone}` : ''}\n\n`;
+    s += f.st.checkedIn ? `Checked in ${fmtTime(f.st.at)}${f.st.by ? ` by ${f.st.by}` : ''}${f.st.lat ? ` · GPS ${f.st.lat.toFixed(5)}, ${f.st.lng.toFixed(5)}` : ''}\n` : `Not checked in\n`;
+    s += `Captured: ${plural(f.c.audio,'recording')} (${fmtHours(f.recSecs)}${f.transcripts ? `, ${f.transcripts} with transcript` : ''}) · ${plural(f.c.photo,'photo')} · ${plural(f.c.video,'video')} · ${plural(f.c.text,'note')}\n`;
+    s += `\n**Summary:** ${f.st.summary ? f.st.summary.trim() : '_not written_'}\n`;
+    if (f.items.length){ s += `\n**Key points**\n` + f.items.sort((a,b) => a.at - b.at).map(it => `- [${it.tag}] ${it.text}`).join('\n') + '\n'; }
+    if (f.other.length){ s += `\n**Other notes**\n` + f.other.map(o => `- ${o.text}`).join('\n') + '\n'; }
+  }
+  return {md: s, file: R.file, title: R.title};
+}
+
+/* On-screen version */
+function renderReport(scope){
+  const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
+  setTop(R.day ? `Day ${R.day} report` : 'Trip report', true);
+  const li = it => `<li><a href="#m${it.m.id}" class="rv">${pad2(it.m.id)} ${esc(it.m.name)}</a> ${esc(it.text)}${it.by ? ` <span class="rby">${esc(it.by)}</span>` : ''}</li>`;
+  let h = `<section class="card"><div class="eyebrow">${R.day ? 'Day report' : 'Whole trip'} · ${esc(user || '')}'s phone</div><h2>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill tour')}</h2>
+    <div class="stats">
+      <div><b>${t.checked}/${t.visits}</b><span>checked in</span></div>
+      <div><b>${t.audio}</b><span>recordings · ${fmtHours(t.recSecs)}</span></div>
+      <div><b>${t.photo + t.video}</b><span>photos & videos</span></div>
+      <div><b>${t.summaries}/${t.visits}</b><span>summaries</span></div>
+    </div>
+    <div class="rowbtns"><button class="btn ghost small" data-a="repcopy" data-s="${scope}">Copy</button><button class="btn primary small" data-a="repshare" data-s="${scope}">Share report</button></div></section>`;
+  const missing = R.facts.filter(f => !f.st.summary);
+  if (missing.length) h += `<div class="banner"><span>Missing summary: ${missing.map(f => `<a href="#m${f.m.id}" class="rv">${pad2(f.m.id)}</a>`).join(' ')}</span></div>`;
+  for (const tag of ['Follow-up','Question']) if (topics[tag]) h += `<section class="card"><h3 class="rh3">${tag === 'Follow-up' ? 'Follow-ups' : 'Open questions'}</h3><ul class="rl">${topics[tag].map(li).join('')}</ul></section>`;
+  const tp = TOPIC_ORDER.filter(tg => topics[tg] && !['Follow-up','Question'].includes(tg));
+  if (tp.length) h += `<section class="card"><h3 class="rh3">By topic</h3>${tp.map(tg => `<div class="rtag">${esc(tg)}</div><ul class="rl">${topics[tg].map(li).join('')}</ul>`).join('')}</section>`;
+  let curDay = null;
+  for (const f of R.facts){
+    if (!R.day && f.m.day !== curDay){ curDay = f.m.day; h += `<div class="section-h"><h3>${DAYLABEL[curDay]} · <a href="#day${curDay}" class="rv">day report</a></h3></div>`; }
+    h += `<section class="card rvisit"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a>
+      <div class="rmeta">${f.st.checkedIn ? `<span class="chip ok">✓ ${fmtTime(f.st.at)}</span>` : '<span class="chip">Not checked in</span>'}
+        <span>${f.c.audio ? `${plural(f.c.audio,'recording')} · ${fmtHours(f.recSecs)}` : 'no recording'} · ${plural(f.c.photo,'photo')}${f.c.video ? ` · ${plural(f.c.video,'video')}` : ''}${f.c.text ? ` · ${plural(f.c.text,'note')}` : ''}</span></div>
+      <p class="rsum">${f.st.summary ? esc(f.st.summary) : '<i>No summary yet</i>'}</p>
+      ${f.items.length ? `<ul class="rl">${f.items.sort((a,b) => a.at - b.at).map(it => `<li><span class="rtg">${esc(it.tag)}</span> ${esc(it.text)}</li>`).join('')}</ul>` : ''}
+      ${f.other.length ? `<ul class="rl rother">${f.other.map(o => `<li>${esc(o.text)}</li>`).join('')}</ul>` : ''}</section>`;
+  }
+  $('#view').innerHTML = h;
+}
+function shareReport(scope){ const r = reportMarkdown(scope); return shareFiles([new File([r.md], r.file, {type:'text/markdown'})], r.title); }
+async function copyReport(scope){ const r = reportMarkdown(scope); try { await navigator.clipboard.writeText(r.md); toast('Report copied'); } catch(e){ await shareReport(scope); } }
 
 /* ---------- export / share ---------- */
 function ext(n){ if (n.type === 'audio') return (n.blob.type.includes('mp4') || n.blob.type.includes('aac')) ? 'm4a' : n.blob.type.includes('ogg') ? 'ogg' : 'webm';
@@ -703,7 +828,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
 /* ---------- boot ---------- */
-const APP_VERSION = '1.1';
+const APP_VERSION = '1.2';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
