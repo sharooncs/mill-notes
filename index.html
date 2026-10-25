@@ -84,7 +84,7 @@ main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){an
 /* glossy 3D number orb */
 .num{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:50%;font-weight:800;font-size:13px;font-family:var(--mono);color:var(--honey-ink);
   background:radial-gradient(circle at 32% 28%,#FFF6D8 0,var(--honey2) 28%,var(--honey) 62%,#E88A00 100%);box-shadow:inset 0 -3px 6px rgba(160,80,0,.35),inset 0 2px 3px rgba(255,255,255,.8),0 4px 10px -3px rgba(220,120,0,.55)}
-.row.done .num,.rvisit.done .num{color:#fff;background:radial-gradient(circle at 32% 28%,#D8FFEE 0,#6FE0B0 28%,var(--mint) 64%,#118A5C 100%);box-shadow:inset 0 -3px 6px rgba(0,90,50,.35),inset 0 2px 3px rgba(255,255,255,.7),0 4px 10px -3px rgba(20,150,100,.55)}
+.row.done .num,.rvisit.done .num,.num.done{color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.35);background:radial-gradient(circle at 30% 26%,#B8F2D6 0,#2FA875 20%,#148257 58%,#0B5E3E 100%);box-shadow:inset 0 -3px 6px rgba(0,90,50,.35),inset 0 2px 3px rgba(255,255,255,.7),0 4px 10px -3px rgba(20,150,100,.55)}
 
 /* actions: one wide hero (meeting) + four tactile tiles */
 .actions{display:flex;flex-direction:column;gap:10px}
@@ -147,7 +147,7 @@ main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){an
 .row .counts{display:flex;gap:7px;color:var(--ink2);font-size:12px;font-family:var(--mono);align-items:center}
 .row .counts i{font-style:normal;display:inline-flex;align-items:center;gap:2px}
 .row .counts svg{width:13px;height:13px;fill:currentColor}
-.row .counts .cm{color:var(--coral)} .row .counts .cv{color:var(--grape)}
+.row .counts .cm{color:#C2452A} .row .counts .cv{color:#6E47D8}
 .row.active{border-color:var(--coral);box-shadow:0 0 0 3px rgba(255,106,72,.18),0 10px 22px -14px rgba(230,70,40,.7)}
 .row .chev{color:var(--ink3);font-size:20px}
 
@@ -173,17 +173,19 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .rowbtns{display:flex;gap:10px;justify-content:flex-end}
 
 .note-card{border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:9px;background:var(--solid);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 22px -16px rgba(150,70,25,.6);position:relative;overflow:hidden}
-.note-card.k-meeting::before,.note-card.k-memo::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:5px;border-radius:0 5px 5px 0;background:#D9492B}
+.note-card.k-meeting::before,.note-card.k-memo::before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:5px;border-radius:0 5px 5px 0;background:#C2452A}
 .note-card.k-memo::before{background:#6E47D8}
 .note-card.k-meeting,.note-card.k-memo{padding-left:16px}
-.note-card .hd{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);flex-wrap:wrap}
+.note-card .hd{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);flex-wrap:nowrap;min-width:0}
+.note-card .hd > span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.note-card .hd .by{margin-left:auto;flex:none} .note-card .hd .kindbadge{flex:none}
 .note-card .hd .kind{display:inline-flex;align-items:center;gap:5px;font-weight:800;color:var(--ink);text-transform:capitalize}
 .note-card .hd .kind svg{width:16px;height:16px;fill:currentColor}
 .note-card .hd .sp{flex:1}
 .note-card .by{font-weight:800;color:var(--link)}
 .kindbadge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;padding:5px 10px;border-radius:999px;color:#fff}
 .kindbadge svg{width:14px;height:14px;fill:#fff}
-.kindbadge.meeting{background:#D9492B} .kindbadge.memo{background:#6E47D8}
+.kindbadge.meeting{background:#C2452A} .kindbadge.memo{background:#6E47D8}
 .kindbadge.text{background:#9A5B00} .kindbadge.photo{background:#6E4F3D} .kindbadge.video{background:#C23E62}
 .kindnote{font-size:12px;color:var(--ink2);font-weight:600}
 .note-card img{width:100%;max-height:60vh;object-fit:contain;border-radius:16px;background:#F6EAE1}
@@ -191,9 +193,9 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .note-card audio{display:none}
 .player{display:flex;align-items:center;gap:12px;padding:8px 12px 8px 8px;border-radius:18px;background:var(--glass-hi);border:1px solid var(--hair)}
 .player .pp{width:44px;height:44px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 4px 10px -4px rgba(0,0,0,.35)}
-.k-meeting .player .pp{background:#D9492B} .k-memo .player .pp{background:#6E47D8}
+.k-meeting .player .pp{background:#C2452A} .k-memo .player .pp{background:#6E47D8}
 .player .pp svg{width:18px;height:18px;fill:#fff}
-.player input[type=range]{flex:1;min-width:0;height:44px;margin:0;accent-color:#D9492B;background:transparent}
+.player input[type=range]{flex:1;min-width:0;height:44px;margin:0;accent-color:#C2452A;background:transparent}
 .k-memo .player input[type=range]{accent-color:#6E47D8}
 .player .tm{font-size:13px;font-weight:700;color:var(--ink2);white-space:nowrap}
 .note-card p{margin:0;white-space:pre-wrap;word-break:break-word}
@@ -205,7 +207,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .stillat{display:block;margin-top:8px;font-size:14px;font-weight:700;color:var(--sky);text-decoration:none}
 .marks{display:flex;flex-wrap:wrap;gap:6px}
 .mark{font-family:var(--mono);font-size:13px;padding:8px 11px;min-height:44px;border-radius:12px;background:var(--glass-hi);color:var(--ink);border:1px solid var(--hair)}
-.mark b{color:var(--coral)}
+.mark b{color:#C2452A}
 .note-card .ft{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .note-card details summary{font-size:13px;color:var(--ink2);cursor:pointer;font-weight:700}
 .transcript{width:100%;min-height:80px;background:rgba(255,255,255,.65);border:1px solid var(--hair);border-radius:14px;padding:10px;font-size:15px}
@@ -215,14 +217,14 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 /* recording screen: coral (meeting) or grape (voice note), glowing 3D orb that breathes with the voice */
 #rec{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;color:#fff;overflow:hidden;
   padding:calc(var(--sat) + 16px) max(20px,env(safe-area-inset-right)) calc(var(--sab) + 18px) max(20px,env(safe-area-inset-left));
-  background:radial-gradient(120% 70% at 50% 28%,#E9603D 0,#C93F24 50%,#9A2B15 100%);animation:fadein .3s var(--ease)}
+  background:radial-gradient(120% 70% at 50% 28%,#CC4A2B 0,#B83A20 50%,#8F2913 100%);animation:fadein .3s var(--ease)}
 #rec.memo{background:radial-gradient(120% 70% at 50% 28%,#8C67EE 0,#6A43D4 50%,#45229E 100%)}
 @keyframes fadein{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:none}}
 #rec .rh{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700}
 #rec .dot{width:12px;height:12px;border-radius:50%;background:#FF2D1F;box-shadow:0 0 0 3px #fff;animation:blink 1.2s infinite}
 #rec .mode{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.2);font-size:13px;font-weight:800}
 #rec .title{font-size:21px;font-weight:800;margin-top:8px;text-wrap:balance;letter-spacing:-.01em}
-#rec .stage{position:relative;overflow:hidden;height:190px;display:flex;align-items:center;justify-content:center;margin:6px 0 2px;perspective:600px}
+#rec .stage{position:relative;overflow:visible;height:190px;display:flex;align-items:center;justify-content:center;margin:6px 0 2px;perspective:600px}
 #rec .orb{width:132px;height:132px;border-radius:50%;will-change:transform;transition:transform .08s linear;
   background:radial-gradient(circle at 34% 28%,#fff 0,rgba(255,255,255,.85) 9%,rgba(255,226,200,.6) 22%,rgba(255,140,100,.25) 48%,rgba(255,255,255,.06) 70%),radial-gradient(circle at 60% 75%,rgba(120,20,0,.35),transparent 60%);
   box-shadow:inset -10px -16px 30px rgba(120,20,0,.35),inset 8px 10px 22px rgba(255,255,255,.55),0 24px 40px -14px rgba(80,10,0,.6),0 0 60px 10px rgba(255,255,255,.18)}
@@ -230,14 +232,16 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
   box-shadow:inset -10px -16px 30px rgba(40,10,110,.4),inset 8px 10px 22px rgba(255,255,255,.55),0 24px 40px -14px rgba(30,0,80,.6),0 0 60px 10px rgba(255,255,255,.18)}
 #rec .ripple{position:absolute;width:132px;height:132px;border-radius:50%;border:2px solid rgba(255,255,255,.5);animation:ripple 2.4s var(--ease) infinite}
 #rec .ripple.r2{animation-delay:1.2s}
-@keyframes ripple{from{transform:scale(1);opacity:.8}to{transform:scale(1.9);opacity:0}}
+@keyframes ripple{from{transform:scale(1);opacity:.7}to{transform:scale(1.45);opacity:0}}
+#rec .title,#rec .timer,#rec .rh,#rec #rec-by{position:relative;z-index:1}
+#rec #rec-by{text-wrap:balance;text-shadow:0 1px 2px rgba(0,0,0,.3)}
 #rec .timer{font-family:var(--mono);font-size:56px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.02em;text-shadow:0 4px 18px rgba(0,0,0,.25)}
 #rec canvas{width:100%;height:44px;display:block;border-radius:14px;background:rgba(255,255,255,.14);margin-top:6px}
 #rec .marklist{flex:1;overflow:auto;margin:10px 0;display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:14px;opacity:.95}
 #rec .marklist div{animation:pop .3s var(--spring)}
 #rec .marklist div b{background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px}
 #rec .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-#rec .quick button{padding:0 4px;height:48px;border-radius:14px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.45);font-weight:800;font-size:14px;color:#fff;transition:transform .15s var(--spring)}
+#rec .quick button{padding:0 3px;white-space:nowrap;font-size:clamp(12px,3.5vw,14px)!important;height:48px;border-radius:14px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.45);font-weight:800;font-size:14px;color:#fff;transition:transform .15s var(--spring)}
 #rec .quick button:active{transform:scale(.92);background:rgba(255,255,255,.4)}
 #rec .bottom{display:flex;gap:12px;align-items:center}
 #rec .markbtn{flex:1;height:70px;border-radius:22px;background:#fff;color:#C83A1E;font-size:19px;font-weight:800;box-shadow:0 6px 0 -1px rgba(0,0,0,.18),0 14px 24px -12px rgba(0,0,0,.5)}
@@ -250,6 +254,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 #rec.memo .quick,#rec.memo .markbtn,#rec.memo .marklist{display:none}
 #rec.memo .stage{flex:1;height:auto;min-height:150px} #rec.memo .bottom{justify-content:center;margin-top:16px} #rec.memo .stop{width:96px;height:96px;border-radius:50%}
 #rec{height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#rec .rec-left{display:contents}
 #rec .marklist{min-height:48px}
 #rec .rtools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px}
 #rec .rtools button{height:44px;border-radius:14px;background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.45);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -264,11 +269,11 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 #rec.memo .rtools button[data-rt="undo"]{display:none} #rec.memo .rtools{grid-template-columns:1fr 1fr}
 /* short screens (landscape, small phones): drop the orb, keep every control reachable */
 @media (max-width:380px){ #rec .quick button{font-size:13px} }
-@media (max-height:700px){ #rec .stage{height:110px} #rec .orb,#rec .ripple{width:84px;height:84px} #rec .timer{font-size:44px} }
+@media (max-height:700px){ #rec .stage{height:120px} #rec .orb,#rec .ripple{width:84px;height:84px} #rec .timer{font-size:44px} }
 @media (max-height:560px){ #rec .stage,#rec canvas{display:none} #rec .timer{font-size:40px;text-align:left} #rec .title{font-size:17px;margin-top:4px}
   #rec .marklist{min-height:28px;max-height:90px} #rec .markbtn,#rec .stop{height:56px} #rec .stop{width:56px} #rec.memo .stop{width:76px;height:76px} #rec .warn{display:none}
   #rec{display:grid;grid-template-columns:1fr 1.15fr;column-gap:20px;align-content:center;grid-auto-flow:row dense}
-  #rec > .rh,#rec > .title,#rec > .timer,#rec > #rec-by,#rec > .marklist{grid-column:1}
+  #rec > .rec-left{grid-column:1;grid-row:1 / span 4;align-self:center;display:flex;flex-direction:column;gap:6px}
   #rec > .quick,#rec > .rtools,#rec > .rnote,#rec > .bottom{grid-column:2} #rec > .rtools{margin-top:0} #rec #rec-by{text-align:left!important}
   #rec.memo > .bottom{grid-column:2;margin-top:0} }
 #rec .warn{font-size:13px;text-align:center;margin-top:10px}
@@ -294,19 +299,20 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .stats b{font-size:24px;font-family:var(--mono);letter-spacing:-.02em} .stats span{font-size:12.5px;color:var(--ink2);font-weight:600}
 .stats .sm b{color:#C93F24} .stats .sv b{color:#6E47D8} .stats .zero b{color:var(--ink3)!important}
 .rh3{margin:0;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:800}
-.rtag{font-size:13px;font-weight:800;color:#B06A00;margin-top:4px}
+.rtag{font-size:13px;font-weight:800;color:#9A5B00;margin-top:4px}
 .rl{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
 .rl.rother{color:var(--ink2)}
 .rl li{overflow-wrap:anywhere} .rl.rother li{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 .rv{color:var(--sky);text-decoration:none;font-weight:800}
 .rby{font-size:12px;color:var(--ink3)}
 .rtg{font-size:12px;font-weight:800;color:#9A5B00;background:rgba(255,178,31,.2);padding:2px 8px;border-radius:999px}
-.rtg.memo{color:#fff;background:var(--grape)}
+.rtg.memo{color:#fff;background:#6E47D8}
 .rvh{display:flex;align-items:center;gap:9px;color:inherit;text-decoration:none} .rvh b{flex:1;font-size:18px} .rt{font-family:var(--mono);font-size:13px;color:var(--ink2)}
 .rmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
 .rsum{white-space:pre-wrap;color:var(--ink)!important}
 .rtx{margin-top:4px;padding:8px 10px;border-radius:12px;background:var(--glass-hi);border:1px solid var(--hair);font-size:14px;color:var(--ink2);white-space:pre-wrap}
-.repcard{border-radius:28px;padding:18px}
+.repcard{border-radius:28px;padding:18px} .repcard h2{margin:0}
+.stats span em{display:block;font-style:normal;font-weight:700;color:var(--ink2)}
 
 @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
 </style>
@@ -324,6 +330,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 
 <!-- recording overlay -->
 <div id="rec" role="dialog" aria-modal="true" aria-label="Recording" hidden>
+  <div class="rec-left">
   <div class="rh"><span class="dot"></span><span class="mode" id="rec-mode">Meeting recording</span><span style="flex:1"></span><span id="rec-size"></span></div>
   <div class="title" id="rec-title"></div>
   <div class="stage" aria-hidden="true"><span class="ripple"></span><span class="ripple r2"></span><div class="orb" id="rec-orb"></div></div>
@@ -331,9 +338,10 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
   <div style="text-align:center;font-size:15px;font-weight:700" id="rec-by">Recording</div>
   <canvas id="rec-meter" width="600" height="88"></canvas>
   <div class="marklist" id="rec-marks" aria-live="polite"></div>
+  </div>
   <div class="quick" id="rec-quick">
     <button data-tag="Price">Price</button><button data-tag="Spec">Spec</button><button data-tag="Lead time">Lead time</button><button data-tag="MOQ">MOQ</button>
-    <button data-tag="Sample">Sample</button><button data-tag="Follow-up">Follow-up</button><button data-tag="Question">Question</button><button data-tag="Important">Important</button>
+    <button data-tag="Sample">Sample</button><button data-tag="Follow-up">Follow&#8209;up</button><button data-tag="Question">Question</button><button data-tag="Important">Important</button>
   </div>
   <div class="rtools" id="rec-tools">
     <button data-rt="photo" aria-label="Take a photo without stopping"></button>
@@ -455,6 +463,7 @@ const _cnParts = new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year:'numeric',
 function cn(d){ const p = {}; _cnParts.formatToParts(new Date(d)).forEach(x => p[x.type] = x.value); return {date:`${p.year}-${p.month}-${p.day}`, hm:`${p.hour}:${p.minute}`, mins: Number(p.hour)*60 + Number(p.minute), stamp:`${p.year}${p.month}${p.day}-${p.hour}${p.minute}`}; }
 function fmtTime(d){ return cn(d).hm; }
 function fmtDateTime(d){ const c = cn(d); return `${c.date} ${c.hm} (China time)`; }
+function fmtAt(t, total){ const s = Math.max(0, Math.round(t)), p = n => String(n).padStart(2,'0'); return total >= 3600 ? `${Math.floor(s/3600)}:${p(Math.floor(s%3600/60))}:${p(s%60)}` : fmtDur(s); }
 function fmtDur(s){ s = Math.max(0, Math.round(s)); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), r = s%60, p = n => String(n).padStart(2,'0');
   return h ? `${h}:${p(m)}:${p(r)}` : `${p(m)}:${p(r)}`; }
 function fmtBytes(b){ return b > 1e9 ? (b/1e9).toFixed(2)+' GB' : b > 1e6 ? (b/1e6).toFixed(1)+' MB' : Math.round(b/1e3)+' KB'; }
@@ -564,7 +573,7 @@ function renderHome(){
   const rd = reportDay();
   let html = contbarHtml() + `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Mill Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>
   <section class="now glass"><div class="eyebrow">${why === 'Now' ? '<span class="live"></span>' : ''}${why} · ${m.dow} ${m.time}</div>
-    <h2><a class="nowlink" href="#m${m.id}" aria-label="Open visit ${esc(m.name)}"><span class="num">${String(m.id).padStart(2,'0')}</span><span>${esc(m.name)}</span><span class="go">›</span></a></h2>
+    <h2><a class="nowlink" href="#m${m.id}" aria-label="Open visit ${esc(m.name)}"><span class="num${meetingState[m.id]?.checkedIn ? ' done' : ''}">${String(m.id).padStart(2,'0')}</span><span>${esc(m.name)}</span><span class="go">›</span></a></h2>
     <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
     <div style="margin-top:14px">${actionsHtml(m.id, memoTarget())}</div>${checkinHtml(m)}
     ${stillAtHtml(m, why)}
@@ -627,13 +636,13 @@ function noteHtml(n){
   if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">`; }
   if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>`; }
   if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" preload="metadata" data-dur="${n.duration || 0}"></audio>
-    <div class="player"><button class="pp" data-play aria-label="Play">${ICON.play}</button><input type="range" min="0" max="${Math.max(1, Math.round(n.duration || 0))}" step="1" value="0" aria-label="Position"><span class="tm">0:00 / ${fmtDur(n.duration || 0)}</span></div>`
-    + (n.marks && n.marks.length ? `<div class="marks${n.marks.length > 12 ? ' collapsed' : ''}">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtDur(x.t)}</b> ${esc(x.tag === 'Mark' ? 'Marked' : x.tag)}</button>`).join('')}</div>${n.marks.length > 12 ? `<button class="morebtn" data-more-marks>Show all ${n.marks.length} tags</button>` : ''}` : '')
+    <div class="player"><button class="pp" data-play aria-label="Play">${ICON.play}</button><input type="range" min="0" max="${Math.max(1, Math.round(n.duration || 0))}" step="1" value="0" aria-label="Position"><span class="tm">${fmtAt(0, n.duration || 0)} / ${fmtAt(n.duration || 0, n.duration || 0)}</span></div>`
+    + (n.marks && n.marks.length ? `<div class="marks${n.marks.length > 12 ? ' collapsed' : ''}">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtAt(x.t, n.duration)}</b> ${esc(x.tag === 'Mark' ? 'Marked' : x.tag)}</button>`).join('')}</div>${n.marks.length > 12 ? `<button class="morebtn" data-more-marks>Show all ${n.marks.length} tags</button>` : ''}` : '')
     + `<details><summary>${ak === 'memo' ? 'Transcript' : 'Chinese transcript / translation'}${n.transcript ? ' ✓' : ''}</summary>
        <textarea class="transcript" data-tr="${n.id}" placeholder="${ak === 'memo' ? 'Optional: paste a transcript of your voice note.' : 'Paste the Mill Transcribe result here, or leave it for after the trip.'}">${esc(n.transcript || '')}</textarea></details>`; }
   if (n.type !== 'text' && n.text) body += `<p class="capline" style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>`;
   const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
-  const extra = n.type === 'audio' ? ` · ${fmtDur(n.duration || 0)}${n.recovered ? ' · recovered' : ''}` : n.blob ? ` · ${fmtBytes(n.blob.size)}` : '';
+  const extra = n.type === 'audio' ? ` · ${fmtHours(n.duration || 0)}${n.recovered ? ' · recovered' : ''}` : n.blob ? ` · ${fmtBytes(n.blob.size)}` : '';
   const kindHtml = ak ? `<span class="kindbadge ${ak}">${ICON[AKIND[ak].icon]}${AKIND[ak].label}</span>` : `<span class="kindbadge ${n.type}">${ICON[k]}${{text:'Note', photo:'Photo', video:'Video'}[n.type]}</span>`;
   return `<article class="note-card${ak ? ' k-' + ak : ''}" data-id="${n.id}">
     <div class="hd">${kindHtml}<span>${fmtTime(n.createdAt)}${extra}</span><span class="sp"></span><span class="by">${esc(n.by || '')}</span></div>
@@ -697,7 +706,7 @@ function playerOf(audio){ return audio.parentElement.querySelector('.player'); }
 function syncPlayer(audio){
   const pl = playerOf(audio); if (!pl) return; const dur = Number(audio.dataset.dur) || audio.duration || 0;
   pl.querySelector('input').value = Math.floor(audio.currentTime);
-  pl.querySelector('.tm').textContent = `${fmtDur(audio.currentTime)} / ${fmtDur(dur)}`;
+  pl.querySelector('.tm').textContent = `${fmtAt(audio.currentTime, dur)} / ${fmtAt(dur, dur)}`;
   const pp = pl.querySelector('.pp'); pp.innerHTML = audio.paused ? ICON.play : ICON.pause; pp.setAttribute('aria-label', audio.paused ? 'Play' : 'Pause');
 }
 ['timeupdate','play','pause','ended','seeked'].forEach(ev => document.addEventListener(ev, e => { if (e.target.tagName === 'AUDIO') syncPlayer(e.target); }, true));
@@ -787,7 +796,7 @@ async function captionNote(nid){
   const card = document.querySelector(`.note-card[data-id="${nid}"]`);
   if (card.querySelector('.cap')) return;
   const box = document.createElement('div'); box.className = 'cap';
-  box.innerHTML = `<textarea class="transcript" placeholder="Caption: what is this?">${esc(n.text || '')}</textarea><div class="tags">${TAGS.map(t => `<button class="tag ${(n.tags||[]).includes(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div><div class="rowbtns"><button class="btn ghost small capcancel">Cancel</button><button class="btn primary small capsave">Save</button></div>`;
+  box.innerHTML = `<div class="kindnote">Caption</div><textarea class="transcript" placeholder="What is this? e.g. Cold rolling mill #3">${esc(n.text || '')}</textarea><div class="tags">${TAGS.map(t => `<button class="tag ${(n.tags||[]).includes(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div><div class="rowbtns"><button class="btn ghost small capcancel">Cancel</button><button class="btn primary small capsave">Save</button></div>`;
   card.insertBefore(box, card.querySelector('.ft')); card.querySelector('.ft').hidden = true;
   const capline = card.querySelector('.capline'); if (capline) capline.hidden = true;
   box.querySelector('.capcancel').onclick = () => { box.remove(); card.querySelector('.ft').hidden = false; if (capline) capline.hidden = false; };
@@ -817,7 +826,7 @@ function visitFacts(m){
     const ak = n.type === 'audio' ? akind(n) : null;
     if (ak === 'meeting'){ recSecs += n.duration || 0; if (n.transcript) transcripts++;
       meetings.push({at: n.createdAt, dur: n.duration || 0, by: n.by, caption: (n.text || '').trim(), transcript: (n.transcript || '').trim(), marks: (n.marks || []).length});
-      for (const k of (n.marks || [])) items.push({tag: TAGS.includes(k.tag) ? k.tag : 'Marked', text: `at ${fmtDur(k.t)} in the ${fmtTime(n.createdAt)} meeting recording`, by: n.by, at: n.createdAt + k.t*1000, kind:'mark'}); }
+      for (const k of (n.marks || [])) items.push({tag: TAGS.includes(k.tag) ? k.tag : 'Marked', text: `at ${fmtAt(k.t, n.duration || 0)} in the ${fmtTime(n.createdAt)} meeting recording`, by: n.by, at: n.createdAt + k.t*1000, kind:'mark'}); }
     if (ak === 'memo'){ memoSecs += n.duration || 0; memos.push({at: n.createdAt, dur: n.duration || 0, by: n.by, text: (n.text || '').trim(), transcript: (n.transcript || '').trim()}); }
     const text = (n.text || '').trim();
     const what = ak ? AKIND[ak].short : n.type;
@@ -889,8 +898,8 @@ function renderReport(scope){
   let h = `<section class="repcard glass" style="display:flex;flex-direction:column;gap:10px"><div class="eyebrow">${R.day ? 'Day report' : 'Whole trip'} · ${esc(user || '')}'s phone</div><h2>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill tour')}</h2>
     <div class="stats">
       <div class="${z(t.checked)}"><b>${t.checked}/${t.visits}</b><span>checked in</span></div>
-      <div class="sm${z(t.meeting)}"><b>${t.meeting}</b><span>meeting recordings${t.recSecs ? ` · ${fmtHours(t.recSecs)}` : ''}</span></div>
-      <div class="sv${z(t.memo)}"><b>${t.memo}</b><span>voice notes${t.memoSecs ? ` · ${fmtHours(t.memoSecs)}` : ''}</span></div>
+      <div class="sm${z(t.meeting)}"><b>${t.meeting}</b><span>meeting recordings${t.recSecs ? `<em>${fmtHours(t.recSecs)}</em>` : ''}</span></div>
+      <div class="sv${z(t.memo)}"><b>${t.memo}</b><span>voice notes${t.memoSecs ? `<em>${fmtHours(t.memoSecs)}</em>` : ''}</span></div>
       <div class="${z(t.summaries)}"><b>${t.summaries}/${t.visits}</b><span>summaries</span></div>
     </div>
     <div style="font-size:13px;color:var(--ink2);font-weight:600">${plural(t.photo,'photo')} · ${plural(t.video,'video')} · ${plural(t.text,'typed note')}</div>
@@ -903,7 +912,9 @@ function renderReport(scope){
   if (tp.length) h += `<section class="card"><h3 class="rh3">By topic</h3>${tp.map(tg => `<div class="rtag">${esc(tg)}</div><ul class="rl">${topics[tg].map(li).join('')}</ul>`).join('')}</section>`;
   let curDay = null;
   for (const f of R.facts){
-    if (!R.day && f.m.day !== curDay){ curDay = f.m.day; h += `<div class="section-h"><h3>${DAYLABEL[curDay]} · <a href="#day${curDay}" class="rv">day report</a></h3></div>`; }
+    if (!R.day && f.m.day !== curDay){ curDay = f.m.day; h += `<div class="section-h"><h3>${DAYLABEL[curDay]}</h3><a href="#day${curDay}" class="dayrep">${ICON.rep}Day report</a></div>`; }
+    const upcoming = !started(f) && f.empty;
+    if (upcoming){ h += `<section class="card rvisit"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a><div class="rmeta"><span class="chip">Upcoming · ${f.m.dow} ${Number(f.m.date.slice(8))} Oct</span></div></section>`; continue; }
     h += `<section class="card rvisit${f.st.checkedIn ? ' done' : ''}"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a>
       <div class="rmeta">${f.st.checkedIn ? `<span class="chip ok">✓ ${fmtTime(f.st.at)}</span>` : '<span class="chip">Not checked in</span>'}
         <span>${f.c.meeting ? `${plural(f.c.meeting,'meeting recording')} · ${fmtHours(f.recSecs)}` : 'no meeting recording'}${f.c.memo ? ` · ${plural(f.c.memo,'voice note')}` : ''} · ${plural(f.c.photo,'photo')}${f.c.video ? ` · ${plural(f.c.video,'video')}` : ''}${f.c.text ? ` · ${plural(f.c.text,'note')}` : ''}</span></div>
@@ -1136,7 +1147,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
 /* ---------- boot ---------- */
-const APP_VERSION = '2.4';
+const APP_VERSION = '2.5';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
