@@ -3,19 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mill Notes</title>
+<title>Butterfly Notes</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="color-scheme" content="light only">
-<meta name="apple-mobile-web-app-title" content="Mill Notes">
+<meta name="apple-mobile-web-app-title" content="Butterfly Notes">
 <meta name="theme-color" content="#FFF5EE">
 <meta name="mn-user" content="">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-180.png">
 <style>
-/* Mill Notes · warm iOS look: cream + peach + coral, frosted glass, tactile 3D buttons.
+/* Butterfly Notes (Project Butterfly) · warm iOS look: cream + peach + coral, frosted glass, tactile 3D buttons.
    Meeting recordings = coral. Voice notes = grape. Checked in = mint. Tags = honey. */
 :root{
   --bg:#FFF5EE; --bg2:#FFE9DC;
@@ -57,6 +57,8 @@ a{color:inherit}
 .top{position:sticky;top:0;z-index:5;padding:calc(var(--sat) + 6px) max(14px,env(safe-area-inset-right)) 8px max(14px,env(safe-area-inset-left));
   display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--bg) 62%,transparent);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:.5px solid var(--hair)}
 .top .back{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:26px;color:var(--coral);margin-left:-6px;font-weight:600}
+.top .logo{width:26px;height:26px;border-radius:7px;flex:none;box-shadow:0 2px 6px -2px rgba(120,40,10,.45)}
+.top .back:not([hidden]) ~ .logo{display:none}
 .top h1{font-size:17px;font-weight:700;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
 .top .who.compact{font-size:0;gap:4px;padding:5px 8px 5px 5px}
 .top .who{font-size:14px;font-weight:700;padding:7px 12px 7px 8px;border-radius:999px;display:flex;align-items:center;gap:7px;background:var(--glass-hi);border:1px solid var(--stroke);box-shadow:0 4px 12px -6px rgba(150,70,25,.4)}
@@ -323,7 +325,8 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 
 <header class="top">
   <button class="back" id="back" hidden aria-label="Back">‹</button>
-  <h1 id="title">Mill Notes</h1>
+  <img class="logo" src="icon-180.png" alt="" width="26" height="26">
+  <h1 id="title">Butterfly Notes</h1>
   <span class="net" id="net" title="Connection"></span>
   <button class="who" id="who">—</button>
 </header>
@@ -365,6 +368,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 <!-- first-run -->
 <div id="overlay" hidden>
   <div class="card glass">
+    <img src="icon-180.png" alt="" width="64" height="64" style="border-radius:15px;box-shadow:0 8px 18px -8px rgba(120,40,10,.5)">
     <h2>Who's using this phone?</h2>
     <p>Every note is stamped with the name. You can change it later from the top-right button.</p>
     <div class="pick"><button data-u="Sharoon">Sharoon</button><button data-u="Naveed">Naveed</button></div>
@@ -570,11 +574,11 @@ function memoTarget(){
 }
 
 function renderHome(){
-  setTop('Mill Notes', false);
+  setTop('Butterfly Notes', false);
   const {m, why} = currentMeeting();
   const days = ['02','03','04','05'];
   const rd = reportDay();
-  let html = contbarHtml() + `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Mill Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>
+  let html = contbarHtml() + `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Butterfly Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>
   <section class="now glass"><div class="eyebrow">${why === 'Now' ? '<span class="live"></span>' : ''}${why} · ${m.dow} ${m.time}</div>
     <h2><a class="nowlink" href="#m${m.id}" aria-label="Open visit ${esc(m.name)}"><span class="num${meetingState[m.id]?.checkedIn ? ' done' : ''}">${String(m.id).padStart(2,'0')}</span><span>${esc(m.name)}</span><span class="go">›</span></a></h2>
     <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
@@ -965,7 +969,7 @@ async function shareFiles(files, title){
     files.forEach(f => { const u = URL.createObjectURL(f); const a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); });
     return true;
   }
-  toast('Sharing not available here. Open Mill Notes from the Home Screen icon.', 4500); return false;
+  toast('Sharing not available here. Open Butterfly Notes from the Home Screen icon.', 4500); return false;
 }
 // Read from the in-memory cache, not IndexedDB: an await before navigator.share can cost the tap's permission on iOS.
 function shareNote(nid){ const n = Object.values(noteCache).flat().find(x => x.id === nid); if (!n || !n.blob) return; const f = fileFor(n); return shareFiles([f], f.name); }
@@ -979,12 +983,12 @@ async function exportMeeting(id){
 }
 async function exportText(){
   const s = MEETINGS.map(m => meetingText(m.id)).join('\n\n---\n\n');
-  try { await navigator.clipboard.writeText(s); toast('Copied all notes'); } catch(e){ await shareFiles([new File([s], 'mill-notes.md', {type:'text/markdown'})], 'Mill Notes'); }
+  try { await navigator.clipboard.writeText(s); toast('Copied all notes'); } catch(e){ await shareFiles([new File([s], 'mill-notes.md', {type:'text/markdown'})], 'Butterfly Notes'); }
 }
 async function exportJson(){
   const all = Object.values(noteCache).flat().map(n => ({...n, blob: undefined, file: n.blob ? fileFor(n).name : null}));
   const data = JSON.stringify({exportedAt: new Date().toISOString(), user, meetings: meetingState, notes: all}, null, 1);
-  await shareFiles([new File([data], 'mill-notes.json', {type:'application/json'})], 'Mill Notes JSON');
+  await shareFiles([new File([data], 'mill-notes.json', {type:'application/json'})], 'Butterfly Notes JSON');
 }
 
 /* ---------- recording ---------- */
@@ -1150,7 +1154,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
 /* ---------- boot ---------- */
-const APP_VERSION = '2.6';
+const APP_VERSION = '2.7';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the personal copies of Mill Notes from the single source (index.html at the repo root).
+"""Build the personal copies of Butterfly Notes (formerly Mill Notes) from the single source (index.html at the repo root).
 
   /mill-notes/          -> asks for the name on first open
   /mill-notes/sharoon/  -> opens as Sharoon, no picker
@@ -19,6 +19,6 @@ for name in ['Sharoon', 'Naveed']:
     for icon in ['icon-180.png', 'icon-512.png', 'icon-512-maskable.png']:
         shutil.copy(root / icon, d / icon)
     m = json.loads((root / 'manifest.webmanifest').read_text())
-    m['name'] = f'Mill Notes · {name}'; m['id'] = f'./?u={name.lower()}'
+    m['name'] = f'Butterfly Notes · {name}'; m['id'] = f'./?u={name.lower()}'
     (d / 'manifest.webmanifest').write_text(json.dumps(m, indent=2, ensure_ascii=False) + '\n')
     print('built', d.relative_to(root))

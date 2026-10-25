@@ -1,7 +1,7 @@
 {
-  "name": "Mill Notes · Naveed",
-  "short_name": "Mill Notes",
-  "description": "Check in to each factory visit and capture audio, photos, video and notes offline.",
+  "name": "Butterfly Notes · Naveed",
+  "short_name": "Butterfly Notes",
+  "description": "Project Butterfly: capture supplier visits offline — meeting recordings, voice notes, photos and notes.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
