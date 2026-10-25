@@ -112,7 +112,7 @@ textarea.note{width:100%;min-height:110px;background:var(--bg);border:1px solid 
 .note-card audio{width:100%}
 .note-card p{margin:0;white-space:pre-wrap;word-break:break-word}
 .marks{display:flex;flex-wrap:wrap;gap:6px}
-.mark{font-family:var(--mono);font-size:12px;padding:4px 8px;border-radius:8px;background:var(--panel2);color:var(--mute)}
+.mark{font-family:var(--mono);font-size:13px;padding:8px 10px;min-height:36px;border-radius:9px;background:var(--panel2);color:var(--fg);border:1px solid var(--line)}
 .mark b{color:var(--amber)}
 .note-card .ft{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .transcript{width:100%;min-height:80px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;font-size:15px}
@@ -138,6 +138,8 @@ textarea.note{width:100%;min-height:110px;background:var(--bg);border:1px solid 
 #rec .stop{width:72px;height:72px;border-radius:18px;background:var(--rec);display:flex;align-items:center;justify-content:center}
 #rec .stop i{display:block;width:26px;height:26px;background:#fff;border-radius:4px}
 #rec .warn{font-size:13px;color:var(--mute);text-align:center;margin-top:10px}
+#rec .lockwarn{color:#FFB4AB;background:rgba(224,68,58,.15);border-radius:10px;padding:8px 10px}
+a.phone{text-decoration:none}
 
 /* first run / settings */
 .card{background:var(--panel);border-radius:18px;padding:16px;border:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
@@ -181,6 +183,7 @@ textarea.note{width:100%;min-height:110px;background:var(--bg);border:1px solid 
     <button class="markbtn" id="rec-mark">Mark moment</button>
     <button class="stop" id="rec-stop" aria-label="Stop and save"><i></i></button>
   </div>
+  <div class="warn lockwarn" id="rec-lockwarn" hidden>This phone can't hold the screen on. Set Settings › Display &amp; Brightness › Auto-Lock › Never.</div>
   <div class="warn">Keep the screen on. Recording stops if the phone locks or you switch apps.</div>
 </div>
 
@@ -193,7 +196,7 @@ textarea.note{width:100%;min-height:110px;background:var(--bg);border:1px solid 
   </div>
 </div>
 
-<input type="file" id="in-photo" accept="image/*" capture="environment" class="sr" multiple>
+<input type="file" id="in-photo" accept="image/*" capture="environment" class="sr">
 <input type="file" id="in-video" accept="video/*" capture="environment" class="sr">
 <input type="file" id="in-import" accept="image/*,video/*,audio/*" class="sr" multiple>
 <div id="toast" hidden></div>
@@ -247,7 +250,7 @@ function tx(store, mode, fn){
   return idb().then(d => new Promise((res, rej) => {
     const t = d.transaction(store, mode); const s = t.objectStore(store);
     let out; try { out = fn(s); } catch(e){ rej(e); return; }
-    t.oncomplete = () => res(out && out.result !== undefined ? out.result : out);
+    t.oncomplete = () => res(out instanceof IDBRequest ? out.result : out); // a missing key resolves to undefined, not the request
     t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   }));
 }
@@ -266,22 +269,28 @@ let noteCache = {};    // meetingId -> notes[]
 let urls = [];         // object URLs to revoke on route change
 
 function toast(msg, ms=2200){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => t.hidden = true, ms); }
-function fmtTime(d){ return new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+/* All times are China time (the itinerary is in local China time), whatever zone the phone is set to. */
+const TZ = 'Asia/Shanghai';
+const _cnParts = new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
+function cn(d){ const p = {}; _cnParts.formatToParts(new Date(d)).forEach(x => p[x.type] = x.value); return {date:`${p.year}-${p.month}-${p.day}`, hm:`${p.hour}:${p.minute}`, mins: Number(p.hour)*60 + Number(p.minute), stamp:`${p.year}${p.month}${p.day}-${p.hour}${p.minute}`}; }
+function fmtTime(d){ return cn(d).hm; }
+function fmtDateTime(d){ const c = cn(d); return `${c.date} ${c.hm} (China time)`; }
 function fmtDur(s){ s = Math.round(s); const m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
 function fmtBytes(b){ return b > 1e9 ? (b/1e9).toFixed(2)+' GB' : b > 1e6 ? (b/1e6).toFixed(1)+' MB' : Math.round(b/1e3)+' KB'; }
 function mins(hhmm){ const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
 
 function currentMeeting(){
-  const now = new Date();
-  const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
-  const cur = now.getHours()*60 + now.getMinutes();
+  const {date: today, mins: cur} = cn(Date.now());
+  const span = m => { const [a,b] = m.time.split('–'); return [mins(a), mins(b)]; };
   const todays = MEETINGS.filter(m => m.date === today);
-  for (const m of todays){ const [a,b] = m.time.split('–'); if (cur >= mins(a)-30 && cur <= mins(b)+30) return {m, why:'Now'}; }
-  for (const m of todays){ const [a] = m.time.split('–'); if (cur < mins(a)) return {m, why:'Next'}; }
+  // 1. a visit that is on right now  2. one starting within 30 min  3. one that ended under 30 min ago
+  for (const m of todays){ const [a,b] = span(m); if (cur >= a && cur < b) return {m, why:'Now'}; }
+  for (const m of todays){ const [a] = span(m); if (cur >= a-30 && cur < a) return {m, why:'Next'}; }
+  for (const m of todays.slice().reverse()){ const [,b] = span(m); if (cur >= b && cur <= b+30) return {m, why:'Just ended'}; }
+  for (const m of todays){ const [a] = span(m); if (cur < a) return {m, why:'Next'}; }
   const future = MEETINGS.filter(m => m.date > today);
   if (future.length) return {m:future[0], why:'Next'};
-  if (todays.length) return {m:todays[todays.length-1], why:'Latest'};
-  return {m:MEETINGS[0], why:'First visit'};
+  return {m:MEETINGS[MEETINGS.length-1], why:'Last visit'};
 }
 
 async function loadState(){
@@ -330,7 +339,7 @@ function renderHome(){
   const days = ['02','03','04','05'];
   let html = `<section class="now"><div class="eyebrow">${why} · ${m.dow} ${m.time}</div>
     <h2><span class="num">${String(m.id).padStart(2,'0')}</span>${esc(m.name)}</h2>
-    <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <span class="phone">${esc(m.phone)}</span>` : ''}</div>
+    <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
     <div style="margin-top:12px">${actionsHtml(m.id)}</div>${checkinHtml(m)}
     <div style="margin-top:12px;text-align:right"><a href="#m${m.id}" class="btn ghost small" style="text-decoration:none">Open visit ›</a></div>
   </section>`;
@@ -355,11 +364,11 @@ function renderMeeting(id){
   const notes = (noteCache[id] || []).slice().sort((a,b) => b.createdAt - a.createdAt);
   let html = `<section class="mhead"><div class="eyebrow">Visit ${String(id).padStart(2,'0')} · ${m.dow} ${m.time}</div>
     <h2>${esc(m.name)}</h2>
-    <div class="meta">${esc(m.detail)}${m.contact ? `<br><b>${esc(m.contact)}</b> <span class="phone">${esc(m.phone)}</span>` : ''}</div>
+    <div class="meta">${esc(m.detail)}${m.contact ? `<br><b>${esc(m.contact)}</b> <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
     ${checkinHtml(m)}</section>
     ${actionsHtml(id)}
     <div id="composer-slot"></div>
-    <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span class="chip" id="sum-state" style="font-size:11px">${st.summary ? 'saved' : ''}</span></div>
+    <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span class="chip" id="sum-state" style="font-size:11px" ${st.summary ? '' : 'hidden'}>saved</span></div>
       <textarea class="note" id="summary" placeholder="Two lines after the visit: what they offer, price indication, next step…">${esc(st.summary || '')}</textarea></section>
     <div class="section-h"><h3>Notes (${notes.length})</h3><button class="btn ghost small" data-a="export" data-m="${id}">Export visit</button></div>`;
   if (!notes.length) html += `<div class="empty">Nothing yet. Tap Record as the meeting starts.</div>`;
@@ -367,8 +376,14 @@ function renderMeeting(id){
   html += `<div style="text-align:center;margin-top:6px"><button class="btn ghost small" data-a="import" data-m="${id}">Import from camera roll</button></div>`;
   $('#view').innerHTML = html;
   const sum = $('#summary'); let sh;
-  sum.addEventListener('input', () => { clearTimeout(sh); $('#sum-state').textContent = '…'; sh = setTimeout(async () => {
-    const cur = meetingState[id] || {id}; cur.summary = sum.value; meetingState[id] = cur; await put('meetings', cur); $('#sum-state').textContent = 'saved'; }, 500); });
+  sum.addEventListener('input', () => { clearTimeout(sh); const ss = $('#sum-state'); ss.hidden = false; ss.textContent = '…'; sh = setTimeout(async () => {
+    const v = sum.value; await patchMeeting(id, {summary: v}); const s = $('#sum-state'); if (s) s.textContent = 'saved'; }, 500); });
+  if (pendingComposer && pendingComposer.mid === id){ const p = pendingComposer; pendingComposer = null; openComposer(p.mid, p.existing); }
+}
+/* Read-modify-write on the stored row, so concurrent saves (summary, GPS, undo) never overwrite each other. */
+async function patchMeeting(id, fields){
+  const cur = (await get('meetings', id)) || {id};
+  Object.assign(cur, fields); await put('meetings', cur); meetingState[id] = cur; return cur;
 }
 function noteHtml(n){
   const k = {audio:'mic', photo:'cam', video:'vid', text:'txt'}[n.type];
@@ -377,7 +392,7 @@ function noteHtml(n){
   if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">`; }
   if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>`; }
   if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" controls preload="metadata"></audio>`
-    + (n.marks && n.marks.length ? `<div class="marks">${n.marks.map(x => `<span class="mark"><b>${fmtDur(x.t)}</b> ${esc(x.tag)}</span>`).join('')}</div>` : '')
+    + (n.marks && n.marks.length ? `<div class="marks">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtDur(x.t)}</b> ${esc(x.tag)}</button>`).join('')}</div>` : '')
     + `<details><summary style="font-size:13px;color:var(--mute);cursor:pointer">Transcript${n.transcript ? ' ✓' : ''}</summary>
        <textarea class="transcript" data-tr="${n.id}" placeholder="Paste the transcript here (Shortcuts › Transcribe Audio), or leave for later.">${esc(n.transcript || '')}</textarea></details>`; }
   if (n.type !== 'text' && n.text) body += `<p style="color:var(--mute);font-size:15px">${esc(n.text)}</p>`;
@@ -406,7 +421,7 @@ async function renderSettings(){
       <button class="btn primary" data-a="exporttext">Copy all notes as text</button>
       <button class="btn ghost" data-a="exportjson">Share notes as JSON</button></section>
     <section class="card"><h2>Chinese transcription on the phone</h2>
-      <p>Open an audio note › <b>Share</b> › pick your <b>Transcribe</b> shortcut (Shortcuts app: Transcribe Audio → Translate Text). Paste the result into the note's Transcript box. Works offline.</p></section>
+      <p>Open an audio note › <b>Share</b> › <b>Mill Transcribe</b> (Shortcuts app: Transcribe Audio → Translate Text). Paste the result into the note's Transcript box. Works offline.</p></section>
     <section class="card"><div class="kv"><span>App version</span><b>${APP_VERSION}</b></div><div class="kv"><span>Connection</span><b id="net-txt">${navigator.onLine ? 'online' : 'offline'}</b></div></section>`;
 }
 
@@ -421,7 +436,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'import'){ pendingMeeting = mid; $('#in-import').click(); return; }
   if (a === 'text') return openComposer(mid);
   if (a === 'checkin') return checkIn(mid);
-  if (a === 'undo'){ const cur = meetingState[mid] || {id:mid}; cur.checkedIn = false; await put('meetings', cur); render(); return; }
+  if (a === 'undo'){ await patchMeeting(mid, {checkedIn: false}); render(); return; }
   if (a === 'share') return shareNote(nid);
   if (a === 'caption') return captionNote(nid);
   if (a === 'del') return deleteNote(nid, b);
@@ -429,14 +444,23 @@ document.addEventListener('click', async (e) => {
   if (a === 'exporttext') return exportText();
   if (a === 'exportjson') return exportJson();
 });
+// Tap a mark: play the recording from 5 s before that moment.
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-seek]'); if (!b) return;
+  const au = document.querySelector(`.note-card[data-id="${b.dataset.n}"] audio`); if (!au) return;
+  au.currentTime = Math.max(0, Number(b.dataset.seek) - 5); au.play().catch(() => {});
+});
 document.addEventListener('change', async (e) => {
   const t = e.target; if (!t.matches('#in-photo,#in-video,#in-import')) return;
-  const files = [...t.files]; t.value = '';
-  for (const f of files){
-    const type = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : 'photo';
-    await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: Date.now(), by: user, text:'', tags:[], name: f.name});
-  }
-  toast(files.length === 1 ? 'Saved' : `Saved ${files.length} files`);
+  const files = [...t.files]; t.value = ''; if (!files.length || pendingMeeting == null) return;
+  let saved = 0;
+  try {
+    for (const f of files){
+      const type = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : 'photo';
+      await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: Date.now(), by: user, text:'', tags:[], name: f.name}); saved++;
+    }
+    toast(saved === 1 ? 'Saved' : `Saved ${saved} files`);
+  } catch(err){ toast(`Saved ${saved} of ${files.length}. Storage error: ${(err && err.message) || err}`, 6000); }
   if (!meetingState[pendingMeeting]?.checkedIn) await checkIn(pendingMeeting, true);
   render();
 });
@@ -447,18 +471,26 @@ document.addEventListener('input', (e) => {
 let pendingMeeting = null;
 
 async function checkIn(mid, silent){
-  const cur = meetingState[mid] || {id: mid};
-  cur.checkedIn = true; cur.at = Date.now(); cur.by = user;
-  await put('meetings', cur); meetingState[mid] = cur;
+  const at = Date.now();
+  await patchMeeting(mid, {checkedIn: true, at, by: user, lat: undefined, lng: undefined, acc: undefined});
   if (!silent) { toast('Checked in'); render(); }
-  if ('geolocation' in navigator) navigator.geolocation.getCurrentPosition(async p => {
-    cur.lat = p.coords.latitude; cur.lng = p.coords.longitude; cur.acc = p.coords.accuracy; await put('meetings', cur); if (!silent) render();
-  }, () => {}, {enableHighAccuracy:false, timeout:8000, maximumAge:60000});
+  if (!('geolocation' in navigator)) return;
+  // Offline in China there is no network location, so ask for real GPS and give it time.
+  const save = async p => {
+    const st = await get('meetings', mid);
+    if (!st || !st.checkedIn || st.at !== at) return; // undone or re-checked-in meanwhile
+    await patchMeeting(mid, {lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy});
+    if (!editing() && !rec) render();
+  };
+  const ask = (tries) => navigator.geolocation.getCurrentPosition(save, () => { if (tries > 0) ask(tries - 1); }, {enableHighAccuracy:true, timeout:30000, maximumAge:120000});
+  ask(1);
 }
 
+let pendingComposer = null; // opened by renderMeeting once the visit page exists
+function editing(){ const a = document.activeElement; return !!(document.querySelector('#ntext') || document.querySelector('.cap') || (a && a.tagName === 'TEXTAREA')); }
 function openComposer(mid, existing){
-  if (location.hash !== `#m${mid}`){ location.hash = `#m${mid}`; setTimeout(() => openComposer(mid, existing), 150); return; }
-  const slot = $('#composer-slot'); if (!slot) return;
+  const slot = $('#composer-slot');
+  if (location.hash !== `#m${mid}` || !slot){ pendingComposer = {mid, existing}; if (location.hash !== `#m${mid}`) location.hash = `#m${mid}`; return; }
   const sel = new Set(existing ? existing.tags || [] : []);
   slot.innerHTML = `<section class="composer"><textarea class="note" id="ntext" placeholder="Type or dictate (mic key on the keyboard works offline for English)…">${esc(existing ? existing.text : '')}</textarea>
     <div class="tags">${TAGS.map(t => `<button class="tag ${sel.has(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
@@ -485,7 +517,10 @@ async function captionNote(nid){
   card.insertBefore(box, card.querySelector('.ft'));
   const sel = new Set(n.tags || []);
   box.querySelectorAll('.tag').forEach(b => b.onclick = () => { b.classList.toggle('on'); const t = b.dataset.t; sel.has(t) ? sel.delete(t) : sel.add(t); });
-  box.querySelector('.btn').onclick = async () => { n.text = box.querySelector('textarea').value.trim(); n.tags = [...sel]; await put('notes', n); toast('Saved'); render(); };
+  box.querySelector('.btn').onclick = async () => {
+    const text = box.querySelector('textarea').value.trim();
+    const fresh = await get('notes', nid); if (!fresh) return; // re-read: keeps a transcript typed meanwhile
+    fresh.text = text; fresh.tags = [...sel]; await put('notes', fresh); toast('Saved'); render(); };
 }
 async function deleteNote(nid, btn){
   if (btn.dataset.armed){ await del('notes', nid); toast('Deleted'); render(); return; }
@@ -495,15 +530,15 @@ async function deleteNote(nid, btn){
 /* ---------- export / share ---------- */
 function ext(n){ if (n.type === 'audio') return (n.blob.type.includes('mp4') || n.blob.type.includes('aac')) ? 'm4a' : n.blob.type.includes('ogg') ? 'ogg' : 'webm';
   if (n.name && n.name.includes('.')) return n.name.split('.').pop(); return n.type === 'photo' ? 'jpg' : n.type === 'video' ? 'mp4' : 'bin'; }
-function fileFor(n){ const m = MEETINGS.find(x => x.id === n.meetingId); const d = new Date(n.createdAt);
-  const stamp = d.toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/(\d{8})(\d{4})/,'$1-$2');
-  const name = `V${String(n.meetingId).padStart(2,'0')}_${m.name.replace(/[^A-Za-z0-9]+/g,'')}_${n.type}_${stamp}_${n.by||''}.${ext(n)}`;
+function fileFor(n){ const m = MEETINGS.find(x => x.id === n.meetingId) || {name:'Unfiled'};
+  const stamp = cn(n.createdAt).stamp; // China time, same as shown in the app
+  const name = `V${String(n.meetingId).padStart(2,'0')}_${m.name.replace(/[^A-Za-z0-9]+/g,'')}_${n.type}_${stamp}_${n.by||''}_n${n.id}.${ext(n)}`;
   return new File([n.blob], name, {type: n.blob.type || 'application/octet-stream'}); }
 function meetingText(id){
   const m = MEETINGS.find(x => x.id === id); const st = meetingState[id] || {};
   const notes = (noteCache[id] || []).slice().sort((a,b) => a.createdAt - b.createdAt);
   let s = `# Visit ${String(id).padStart(2,'0')} · ${m.name}\n${m.dow} ${m.date} ${m.time} · ${m.detail}${m.contact ? ` · ${m.contact} ${m.phone}` : ''}\n`;
-  s += st.checkedIn ? `Checked in: ${new Date(st.at).toLocaleString()}${st.lat ? ` · GPS ${st.lat.toFixed(5)}, ${st.lng.toFixed(5)} (±${Math.round(st.acc||0)} m)` : ''} · by ${st.by||''}\n` : `Not checked in\n`;
+  s += st.checkedIn ? `Checked in: ${fmtDateTime(st.at)}${st.lat ? ` · GPS ${st.lat.toFixed(5)}, ${st.lng.toFixed(5)} (±${Math.round(st.acc||0)} m)` : ''} · by ${st.by||''}\n` : `Not checked in\n`;
   if (st.summary) s += `\n## Summary\n${st.summary}\n`;
   s += `\n## Notes (${notes.length})\n`;
   for (const n of notes){
@@ -519,11 +554,15 @@ async function shareFiles(files, title){
   if (navigator.share && navigator.canShare && navigator.canShare({files})){
     try { await navigator.share({files, title}); return true; } catch(e){ if (e.name === 'AbortError') return false; toast('Share failed: ' + e.message, 3500); return false; }
   }
-  // fallback: open each file
-  files.forEach(f => { const u = URL.createObjectURL(f); const a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); });
-  return true;
+  // fallback (desktop browsers): download each file
+  if (!/iPhone|iPad/.test(navigator.userAgent)){
+    files.forEach(f => { const u = URL.createObjectURL(f); const a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); });
+    return true;
+  }
+  toast('Sharing not available here. Open Mill Notes from the Home Screen icon.', 4500); return false;
 }
-async function shareNote(nid){ const n = await get('notes', nid); if (!n || !n.blob) return; await shareFiles([fileFor(n)], fileFor(n).name); }
+// Read from the in-memory cache, not IndexedDB: an await before navigator.share can cost the tap's permission on iOS.
+function shareNote(nid){ const n = Object.values(noteCache).flat().find(x => x.id === nid); if (!n || !n.blob) return; const f = fileFor(n); return shareFiles([f], f.name); }
 async function exportMeeting(id){
   const m = MEETINGS.find(x => x.id === id); const notes = (noteCache[id] || []);
   const files = notes.filter(n => n.blob).map(fileFor);
@@ -543,77 +582,137 @@ async function exportJson(){
 }
 
 /* ---------- recording ---------- */
-let rec = null; // {mr, stream, recId, start, marks, timer, ctx, raf, meetingId, bytes}
+let rec = null;          // the live recording: {mr, stream, recId, start, marks, meetingId, by, mime, bytes, pending, ctx, timer, raf, lock}
+let starting = false;    // blocks a double tap on Record while the mic is being opened
+const finalized = new Set(); // recIds already saved (or being saved): stops double saves
 function pickMime(){ for (const t of ['audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/webm;codecs=opus','audio/webm','audio/ogg']) { try { if (MediaRecorder.isTypeSupported(t)) return t; } catch(e){} } return ''; }
+function saveRecInfo(r){ try { localStorage.setItem('mn.rec', JSON.stringify({recId:r.recId, meetingId:r.meetingId, start:r.start, by:r.by, mime:r.mime, marks:r.marks})); } catch(e){} }
+function clearRecInfo(recId){ try { const i = JSON.parse(localStorage.getItem('mn.rec') || 'null'); if (!i || i.recId === recId) localStorage.removeItem('mn.rec'); } catch(e){} }
 async function startRecording(mid){
-  if (rec) return;
+  if (rec || starting) return;
   if (!navigator.mediaDevices || !window.MediaRecorder){ toast('Recording needs Safari 14.5+ (open from Home Screen)', 4000); return; }
-  let stream;
-  try { stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:true}}); }
-  catch(e){ toast('Microphone blocked. Settings › Safari (or Mill Notes) › Microphone', 4500); return; }
-  const mime = pickMime(); const mr = new MediaRecorder(stream, mime ? {mimeType: mime, audioBitsPerSecond: 64000} : undefined);
-  const recId = Date.now(); const m = MEETINGS.find(x => x.id === mid);
-  rec = {mr, stream, recId, start: Date.now(), marks:[], meetingId: mid, bytes:0, mime: mr.mimeType || mime};
-  try { localStorage.setItem('mn.rec', JSON.stringify({recId, meetingId: mid, start: rec.start, by: user, mime: rec.mime})); } catch(e){}
-  const self = rec;
-  mr.ondataavailable = (ev) => { if (ev.data && ev.data.size){ self.bytes += ev.data.size; const seq = Date.now(); self.pending = (self.pending || Promise.resolve()).then(() => add('parts', {rec: recId, seq, blob: ev.data})).catch(() => {}); $('#rec-size').textContent = fmtBytes(self.bytes); } };
-  mr.onstop = () => finalizeRecording(recId, mid, rec.start, rec.marks, rec.mime, false, user, rec.stopAt);
-  mr.start(4000);
-  // UI
-  $('#rec-title').textContent = `${String(mid).padStart(2,'0')} · ${m.name}`; $('#rec-by').textContent = `Recording · ${user || ''}`;
-  $('#rec-marks').innerHTML = ''; $('#rec-timer').textContent = '00:00'; $('#rec-size').textContent = ''; $('#rec').hidden = false;
-  rec.timer = setInterval(() => { $('#rec-timer').textContent = fmtDur((Date.now() - rec.start)/1000); }, 500);
-  try { rec.lock = await navigator.wakeLock.request('screen'); } catch(e){}
-  meter(stream);
-  if (!meetingState[mid]?.checkedIn) checkIn(mid, true);
-}
-function meter(stream){
+  starting = true;
+  // Create the audio context inside the tap so iOS lets it run (it drives the level meter).
+  let ctx = null; try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)(); const src = ctx.createMediaStreamSource(stream); const an = ctx.createAnalyser(); an.fftSize = 256; src.connect(an);
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:true}}); }
+    catch(e){ try { ctx && ctx.close(); } catch(_){} toast('Microphone blocked. Settings › Apps › Safari › Microphone › Allow', 5000); return; }
+    const mime = pickMime(); const mr = new MediaRecorder(stream, mime ? {mimeType: mime, audioBitsPerSecond: 64000} : undefined);
+    const recId = Date.now(); const m = MEETINGS.find(x => x.id === mid);
+    const self = rec = {mr, stream, recId, start: recId, marks:[], meetingId: mid, by: user, bytes:0, mime: mr.mimeType || mime, pending: Promise.resolve(), ctx};
+    saveRecInfo(self);
+    mr.ondataavailable = (ev) => {
+      if (!ev.data || !ev.data.size) return;
+      self.bytes += ev.data.size; const seq = Date.now();
+      // Each 4 s chunk is stored on its own, with its visit, so a crash loses at most one chunk.
+      self.pending = self.pending.then(() => add('parts', {rec: recId, seq, blob: ev.data, mid, by: self.by, mime: self.mime}))
+        .catch(() => { if (!self.warned){ self.warned = true; toast('Storage error: the recording is not being saved. Stop and free up space.', 7000); } });
+      const s = $('#rec-size'); if (s) s.textContent = fmtBytes(self.bytes);
+    };
+    mr.onstop = () => { self.stopAt = self.stopAt || Date.now(); finalizeRecording(self.recId, self.meetingId, self.start, self.marks, self.mime, false, self.by, self.stopAt, self); };
+    mr.start(4000);
+    // UI
+    $('#rec-title').textContent = `${String(mid).padStart(2,'0')} · ${m.name}`; $('#rec-by').textContent = `Recording · ${user || ''}`;
+    $('#rec-marks').innerHTML = ''; $('#rec-timer').textContent = '00:00'; $('#rec-size').textContent = ''; $('#rec').hidden = false;
+    self.timer = setInterval(() => { $('#rec-timer').textContent = fmtDur((Date.now() - self.start)/1000); }, 500);
+    meter(self);
+    await lockScreen(self);
+    if (!meetingState[mid]?.checkedIn) checkIn(mid, true);
+  } finally { starting = false; }
+}
+async function lockScreen(r){
+  try { r.lock = await navigator.wakeLock.request('screen'); $('#rec-lockwarn').hidden = true; }
+  catch(e){ r.lock = null; $('#rec-lockwarn').hidden = false; }
+}
+function meter(r){
+  try {
+    const ctx = r.ctx; if (!ctx) return; if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const src = ctx.createMediaStreamSource(r.stream); const an = ctx.createAnalyser(); an.fftSize = 256; src.connect(an);
     const data = new Uint8Array(an.frequencyBinCount); const c = $('#rec-meter'), g = c.getContext('2d'); const hist = new Array(120).fill(0);
-    rec.ctx = ctx;
-    const draw = () => { if (!rec) return; an.getByteTimeDomainData(data); let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128)); hist.push(peak/128); hist.shift();
+    const draw = () => { if (rec !== r) return; an.getByteTimeDomainData(data); let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128)); hist.push(peak/128); hist.shift();
       g.clearRect(0,0,c.width,c.height); const w = c.width / hist.length; hist.forEach((v,i) => { const h = Math.max(3, v * c.height); g.fillStyle = v > .85 ? '#E0443A' : '#F6A623'; g.fillRect(i*w, (c.height-h)/2, w-1.5, h); });
-      rec.raf = requestAnimationFrame(draw); };
+      r.raf = requestAnimationFrame(draw); };
     draw();
   } catch(e){}
 }
-function addMark(tag){ if (!rec) return; const t = (Date.now() - rec.start)/1000; rec.marks.push({t, tag}); const d = document.createElement('div'); d.innerHTML = `<b>${fmtDur(t)}</b> ${esc(tag)}`; $('#rec-marks').prepend(d); if (navigator.vibrate) navigator.vibrate(30); }
+function addMark(tag){ if (!rec) return; const t = (Date.now() - rec.start)/1000; rec.marks.push({t, tag}); saveRecInfo(rec); const d = document.createElement('div'); d.innerHTML = `<b>${fmtDur(t)}</b> ${esc(tag)}`; $('#rec-marks').prepend(d); if (navigator.vibrate) navigator.vibrate(30); }
 $('#rec-mark').onclick = () => addMark('Mark');
 $('#rec-quick').addEventListener('click', e => { const b = e.target.closest('button'); if (b) addMark(b.dataset.tag); });
 $('#rec-stop').onclick = () => stopRecording();
-function stopRecording(){ if (!rec) return; rec.stopAt = Date.now(); try { rec.mr.state !== 'inactive' && rec.mr.stop(); } catch(e){ finalizeRecording(rec.recId, rec.meetingId, rec.start, rec.marks, rec.mime, false); } }
-async function finalizeRecording(recId, mid, start, marks, mime, recovered, by, stopAt){
-  const live = rec && rec.recId === recId ? rec : null;
-  if (live){ clearInterval(live.timer); cancelAnimationFrame(live.raf); try { live.stream.getTracks().forEach(t => t.stop()); } catch(e){} try { live.ctx && live.ctx.close(); } catch(e){} try { live.lock && live.lock.release(); } catch(e){} rec = null; }
+function stopRecording(){
+  if (!rec) return; const r = rec; r.stopAt = Date.now();
+  const fin = () => finalizeRecording(r.recId, r.meetingId, r.start, r.marks, r.mime, false, r.by, r.stopAt, r);
+  try { if (r.mr.state !== 'inactive') { r.mr.stop(); setTimeout(fin, 4000); } else fin(); } // onstop normally saves; the timer is a backstop
+  catch(e){ fin(); }
+}
+function teardown(r){
+  clearInterval(r.timer); cancelAnimationFrame(r.raf);
+  try { r.stream.getTracks().forEach(t => t.stop()); } catch(e){}
+  try { r.ctx && r.ctx.close(); } catch(e){}
+  try { r.lock && r.lock.release(); } catch(e){}
+  if (rec === r) rec = null;
+}
+async function finalizeRecording(recId, mid, start, marks, mime, recovered, by, stopAt, live){
+  if (finalized.has(recId)) return; finalized.add(recId);
+  if (live) teardown(live);
   $('#rec').hidden = true;
-  if (live && live.pending) { try { await live.pending; } catch(e){} }
-  await new Promise(r => setTimeout(r, 100));
-  const parts = (await getAll('parts', 'rec', recId)).sort((a,b) => a.seq - b.seq);
-  if (!parts.length){ try { localStorage.removeItem('mn.rec'); } catch(e){} if (!recovered) toast('Nothing recorded'); return; }
-  const blob = new Blob(parts.map(p => p.blob), {type: mime || parts[0].blob.type});
-  const duration = Math.max(1, ((stopAt || parts[parts.length-1].seq) - start)/1000);
-  await add('notes', {meetingId: mid, type:'audio', blob, createdAt: start, by: by || user, duration, marks, tags:[], recovered: !!recovered});
-  for (const p of parts) await del('parts', p.id);
-  try { localStorage.removeItem('mn.rec'); } catch(e){}
-  toast(recovered ? `Recovered a ${fmtDur(duration)} recording` : `Saved ${fmtDur(duration)} recording`, 3000);
-  render();
+  try {
+    if (live) { try { await live.pending; } catch(e){} }
+    const parts = (await getAll('parts', 'rec', recId)).sort((a,b) => a.seq - b.seq);
+    if (!parts.length){ clearRecInfo(recId); if (!recovered) toast('Nothing recorded'); return; }
+    const blob = new Blob(parts.map(p => p.blob), {type: mime || parts[0].mime || parts[0].blob.type});
+    const duration = Math.max(1, ((stopAt || parts[parts.length-1].seq) - start)/1000);
+    const note = {meetingId: mid, type:'audio', blob, createdAt: start, by: by || user, duration, marks: marks || [], tags:[], recovered: !!recovered};
+    // One transaction: the note is written and its chunks removed together, or neither happens.
+    await idb().then(d => new Promise((res, rej) => {
+      const t = d.transaction(['notes','parts'], 'readwrite');
+      t.objectStore('notes').add(note); const ps = t.objectStore('parts'); parts.forEach(p => ps.delete(p.id));
+      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    }));
+    clearRecInfo(recId);
+    toast(recovered ? `Recovered a ${fmtDur(duration)} recording` : `Saved ${fmtDur(duration)} recording`, 3000);
+    if (!editing()) render();
+  } catch(e){
+    finalized.delete(recId); // the chunks are still stored; the next launch retries
+    toast('Could not save the recording yet (' + ((e && e.message) || e) + '). It is kept and will be saved on next launch.', 7000);
+  }
 }
 async function recoverIfNeeded(){
   let info = null; try { info = JSON.parse(localStorage.getItem('mn.rec') || 'null'); } catch(e){}
-  if (info && !rec) await finalizeRecording(info.recId, info.meetingId, info.start, [], info.mime, true, info.by);
+  const all = await getAll('parts');
+  const ids = [...new Set(all.map(p => p.rec))];
+  if (info && !ids.includes(info.recId)) clearRecInfo(info.recId);
+  for (const id of ids){
+    if (rec && rec.recId === id) continue;
+    const p0 = all.find(p => p.rec === id);
+    const i = info && info.recId === id ? info : {meetingId: p0.mid, start: id, by: p0.by, mime: p0.mime, marks: []};
+    const mid = i.meetingId ?? p0.mid ?? currentMeeting().m.id;
+    await finalizeRecording(id, mid, i.start, i.marks || [], i.mime, true, i.by);
+  }
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && rec && rec.mr.state === 'inactive'){ toast('Recording stopped when the screen locked. Saved what we had.', 4000); finalizeRecording(rec.recId, rec.meetingId, rec.start, rec.marks, rec.mime, false); }
+  if (!rec) return;
+  const r = rec;
+  if (document.visibilityState === 'hidden'){ try { if (r.mr.state === 'recording') r.mr.requestData(); } catch(e){} return; } // flush the last seconds
+  if (r.mr.state === 'inactive'){
+    toast('Recording stopped when the screen locked or you left the app. What was recorded is saved.', 5000);
+    setTimeout(() => finalizeRecording(r.recId, r.meetingId, r.start, r.marks, r.mime, false, r.by, r.stopAt, r), 1500); // after onstop's last chunk
+  } else lockScreen(r); // iOS drops the wake lock whenever the page is hidden
 });
+window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
 /* ---------- boot ---------- */
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
-(async () => { await recoverIfNeeded(); if (!user) $('#overlay').hidden = false; render(); })();
+(async () => {
+  try { await recoverIfNeeded(); } catch(e){ toast('Could not recover an earlier recording: ' + ((e && e.message) || e), 6000); }
+  if (!user) $('#overlay').hidden = false;
+  try { await render(); } catch(e){ $('#view').innerHTML = `<div class="card"><h2>Something went wrong</h2><p>${esc(e && e.message)}</p><p>Your notes are still stored. Close and reopen the app.</p></div>`; }
+})();
 </script>
 </body>
 </html>
