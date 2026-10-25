@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mill Notes</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mill Notes">
+<meta name="theme-color" content="#FFF5EE">
+<meta name="mn-user" content="Naveed">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+/* Mill Notes · warm iOS look: cream + peach + coral, frosted glass, tactile 3D buttons.
+   Meeting recordings = coral. Voice notes = grape. Checked in = mint. Tags = honey. */
+:root{
+  --bg:#FFF5EE; --bg2:#FFE9DC;
+  --blob1:#FFC7A8; --blob2:#FFB8C6; --blob3:#FFE3A3;
+  --glass:rgba(255,255,255,.58); --glass-hi:rgba(255,255,255,.78); --solid:rgba(255,255,255,.82);
+  --stroke:rgba(255,255,255,.85); --hair:rgba(122,74,44,.12);
+  --ink:#3B2418; --ink2:#7B5A47; --ink3:#AE8F7B;
+  --coral:#FF6A48; --coral2:#FF9B6A; --coral-ink:#fff;
+  --grape:#8A63F2; --grape2:#C38BFF;
+  --honey:#FFB21F; --honey2:#FFD36A; --honey-ink:#4A2C00;
+  --mint:#25B07A; --sky:#2F7CF6; --red:#F0453A;
+  --shadow:0 14px 34px -16px rgba(150,70,25,.45);
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Rounded","SF Pro Text","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,monospace;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){ :root{
+  --bg:#1D1411; --bg2:#2A1C16; --blob1:#5A2C1C; --blob2:#4B2233; --blob3:#4A3815;
+  --glass:rgba(58,40,32,.55); --glass-hi:rgba(70,48,38,.75); --solid:rgba(52,36,29,.86);
+  --stroke:rgba(255,220,200,.14); --hair:rgba(255,220,200,.12);
+  --ink:#FFF1E8; --ink2:#E2C3B0; --ink3:#A98773;
+  --shadow:0 14px 34px -16px rgba(0,0,0,.7); color-scheme:dark; } }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;color:var(--ink);font-family:var(--font);font-size:17px;line-height:1.35;background:var(--bg)}
+body{overscroll-behavior-y:none;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+/* soft drifting colour blobs behind everything (gradients only, no blur filter: cheap on the GPU) */
+body::before{content:"";position:fixed;inset:-20%;z-index:-1;pointer-events:none;
+  background:radial-gradient(38% 30% at 18% 12%,var(--blob1),transparent 70%),radial-gradient(34% 28% at 88% 30%,var(--blob2),transparent 70%),
+             radial-gradient(40% 32% at 30% 85%,var(--blob3),transparent 70%),linear-gradient(180deg,var(--bg),var(--bg2));
+  animation:drift 28s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate3d(-4%,3%,0) rotate(6deg) scale(1.06)}}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;margin:0;cursor:pointer;touch-action:manipulation}
+button:focus-visible,textarea:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--honey);outline-offset:2px}
+textarea,input{font:inherit;color:inherit}
+[hidden]{display:none!important}
+.sr{position:absolute;left:-9999px}
+a{color:inherit}
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),var(--shadow)}
+
+/* top bar: frosted, iOS style */
+.top{position:sticky;top:0;z-index:5;padding:calc(var(--sat) + 6px) max(14px,env(safe-area-inset-right)) 8px max(14px,env(safe-area-inset-left));
+  display:flex;align-items:center;gap:10px;background:color-mix(in srgb,var(--bg) 62%,transparent);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border-bottom:.5px solid var(--hair)}
+.top .back{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:26px;color:var(--coral);margin-left:-6px;font-weight:600}
+.top h1{font-size:17px;font-weight:700;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.top .who{font-size:14px;font-weight:700;padding:7px 12px 7px 8px;border-radius:999px;display:flex;align-items:center;gap:7px;background:var(--glass-hi);border:1px solid var(--stroke);box-shadow:0 4px 12px -6px rgba(150,70,25,.4)}
+.top .who::before{content:attr(data-i);width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:#fff;background:linear-gradient(145deg,var(--coral2),var(--coral))}
+.net{width:8px;height:8px;border-radius:50%;background:var(--ink3);box-shadow:0 0 0 3px rgba(0,0,0,.04)} .net.on{background:var(--mint)}
+.bigtitle{font-size:34px;font-weight:800;letter-spacing:-.025em;margin:2px 2px -4px}
+.bigtitle small{display:block;font-size:15px;font-weight:600;color:var(--ink2);letter-spacing:0;margin-top:2px}
+
+main{padding:12px max(16px,env(safe-area-inset-right)) calc(var(--sab) + 34px) max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px;perspective:900px}
+/* entrance: each block rises in with a slight 3D tilt, staggered */
+main.enter > *{animation:rise .55s var(--ease) both;transform-origin:50% 0}
+main.enter > *:nth-child(2){animation-delay:.04s} main.enter > *:nth-child(3){animation-delay:.08s} main.enter > *:nth-child(4){animation-delay:.12s}
+main.enter > *:nth-child(5){animation-delay:.16s} main.enter > *:nth-child(6){animation-delay:.2s} main.enter > *:nth-child(n+7){animation-delay:.24s}
+@keyframes rise{from{opacity:0;transform:translateY(18px) rotateX(-14deg) scale(.98)}to{opacity:1;transform:none}}
+
+/* now card */
+.now{border-radius:28px;padding:18px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);font-weight:800}
+.eyebrow .live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--coral);margin-right:6px;vertical-align:1px;animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+.now h2{margin:6px 0 2px;font-size:26px;line-height:1.12;letter-spacing:-.02em;text-wrap:balance;display:flex;align-items:center;gap:10px}
+.now .meta,.mhead .meta{color:var(--ink2);font-size:15px;line-height:1.5}
+/* glossy 3D number orb */
+.num{display:inline-flex;align-items:center;justify-content:center;flex:none;width:32px;height:32px;border-radius:50%;font-weight:800;font-size:13px;font-family:var(--mono);color:var(--honey-ink);
+  background:radial-gradient(circle at 32% 28%,#FFF6D8 0,var(--honey2) 28%,var(--honey) 62%,#E88A00 100%);box-shadow:inset 0 -3px 6px rgba(160,80,0,.35),inset 0 2px 3px rgba(255,255,255,.8),0 4px 10px -3px rgba(220,120,0,.55)}
+.row.done .num{color:#fff;background:radial-gradient(circle at 32% 28%,#D8FFEE 0,#6FE0B0 28%,var(--mint) 64%,#118A5C 100%);box-shadow:inset 0 -3px 6px rgba(0,90,50,.35),inset 0 2px 3px rgba(255,255,255,.7),0 4px 10px -3px rgba(20,150,100,.55)}
+
+/* actions: one wide hero (meeting) + four tactile tiles */
+.actions{display:flex;flex-direction:column;gap:10px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.hero{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;min-height:76px;padding:12px 18px;border-radius:22px;color:#fff;text-align:left;
+  background:linear-gradient(160deg,var(--coral2),var(--coral) 55%,#E9472A);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -3px 0 rgba(150,30,10,.25),0 6px 0 -1px #D9442A,0 16px 26px -10px rgba(230,70,40,.65);
+  transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
+.hero::after{content:"";position:absolute;inset:0 0 50% 0;background:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0));border-radius:22px 22px 60% 60%/22px 22px 18px 18px;pointer-events:none}
+.hero:active{transform:translateY(5px);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 1px 0 -1px #D9442A,0 6px 12px -8px rgba(230,70,40,.6)}
+.hero .ic{position:relative;width:48px;height:48px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.22);box-shadow:inset 0 1px 1px rgba(255,255,255,.6)}
+.hero .ic::before{content:"";position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(255,255,255,.55);animation:ring 2.2s var(--ease) infinite}
+@keyframes ring{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+.hero svg{width:26px;height:26px;fill:#fff}
+.hero b{display:block;font-size:20px;letter-spacing:-.01em} .hero span{font-size:13px;opacity:.92;font-weight:600}
+.act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:88px;border-radius:20px;font-size:12.5px;font-weight:700;color:var(--ink);
+  background:linear-gradient(180deg,var(--glass-hi),var(--glass));border:1px solid var(--stroke);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 5px 0 -1px rgba(214,170,140,.55),0 12px 18px -10px rgba(150,70,25,.45);transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
+.act:active{transform:translateY(4px);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 0 -1px rgba(214,170,140,.55),0 4px 8px -6px rgba(150,70,25,.4)}
+.act .bub{width:38px;height:38px;border-radius:13px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 1px rgba(255,255,255,.6),inset 0 -2px 3px rgba(0,0,0,.12),0 4px 8px -3px rgba(0,0,0,.25)}
+.act svg{width:22px;height:22px;fill:#fff}
+.bub.grape{background:linear-gradient(150deg,var(--grape2),var(--grape))} .bub.peach{background:linear-gradient(150deg,#FFB78C,#FF8A5B)}
+.bub.rose{background:linear-gradient(150deg,#FF9FB4,#F0627F)} .bub.honey{background:linear-gradient(150deg,var(--honey2),var(--honey))}
+.act.memo{color:var(--grape)}
+
+/* check-in */
+.checkin{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:.5px solid var(--hair)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:16px;font-weight:700;font-size:16px;text-decoration:none;transition:transform .15s var(--ease),filter .15s}
+.btn:active{transform:scale(.96)}
+.btn.primary{color:var(--honey-ink);background:linear-gradient(180deg,var(--honey2),var(--honey));box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 4px 0 -1px #E39400,0 10px 18px -8px rgba(230,140,0,.6)}
+.btn.primary:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 0 -1px #E39400}
+.btn.ghost{background:var(--glass-hi);color:var(--ink);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 6px 14px -10px rgba(150,70,25,.5)}
+.btn.danger{background:rgba(240,69,58,.12);color:var(--red)}
+.btn.small{min-height:38px;padding:0 13px;font-size:14px;border-radius:12px}
+.btn svg{width:18px;height:18px;fill:currentColor}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 11px;border-radius:999px;background:var(--glass-hi);color:var(--ink2);border:1px solid var(--stroke)}
+.chip.ok{background:rgba(37,176,122,.14);color:var(--mint);border-color:transparent}
+.chip.amber{background:rgba(255,178,31,.18);color:#B06A00;border-color:transparent}
+
+/* report bar on home */
+.reportbar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.repbtn{display:flex;align-items:center;gap:10px;padding:12px;border-radius:20px;text-decoration:none;color:var(--ink);font-weight:800;font-size:15px;line-height:1.15}
+.repbtn small{display:block;font-weight:600;font-size:12px;color:var(--ink2)}
+.repbtn .bub{width:38px;height:38px;flex:none;border-radius:12px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 1px rgba(255,255,255,.6),0 4px 8px -3px rgba(0,0,0,.25)}
+.repbtn svg{width:21px;height:21px;fill:#fff}
+
+/* day list */
+.day h3{margin:6px 2px 10px;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dayrep{flex:none;display:inline-flex;align-items:center;gap:6px;font-size:13px;letter-spacing:0;text-transform:none;font-weight:800;text-decoration:none;color:var(--honey-ink);padding:8px 12px;border-radius:999px;
+  background:linear-gradient(180deg,var(--honey2),var(--honey));box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 3px 0 -1px #E39400,0 8px 14px -8px rgba(230,140,0,.7)}
+.dayrep svg{width:15px;height:15px;fill:currentColor}
+.dayrep:active{transform:translateY(2px)}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:13px 14px;border-radius:20px;background:var(--solid);border:1px solid var(--stroke);margin-bottom:9px;text-decoration:none;color:inherit;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 18px -14px rgba(150,70,25,.6);transition:transform .2s var(--ease)}
+.row:active{transform:scale(.98)}
+.row .t{flex:1;min-width:0}
+.row .t b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.row .t span{font-size:13px;color:var(--ink2);font-family:var(--mono)}
+.row .counts{display:flex;gap:7px;color:var(--ink2);font-size:12px;font-family:var(--mono);align-items:center}
+.row .counts i{font-style:normal;display:inline-flex;align-items:center;gap:2px}
+.row .counts svg{width:13px;height:13px;fill:currentColor}
+.row .counts .cm{color:var(--coral)} .row .counts .cv{color:var(--grape)}
+.row.active{border-color:var(--coral);box-shadow:0 0 0 3px rgba(255,106,72,.18),0 10px 22px -14px rgba(230,70,40,.7)}
+.row .chev{color:var(--ink3);font-size:20px}
+
+/* visit page */
+.mhead{border-radius:28px;padding:18px}
+.mhead h2{margin:4px 0 4px;font-size:28px;line-height:1.08;letter-spacing:-.02em;text-wrap:balance}
+.mhead .meta b{color:var(--ink)}
+.phone{font-family:var(--mono);color:var(--sky);white-space:nowrap;text-decoration:none;font-weight:600}
+.section-h{display:flex;align-items:center;justify-content:space-between;margin:6px 2px -2px}
+.section-h h3{margin:0;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:800}
+
+/* composer + cards */
+.card{border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px;background:var(--solid);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),var(--shadow)}
+.card h2{margin:0;font-size:22px;letter-spacing:-.015em}
+.card p{margin:0;color:var(--ink2)}
+.composer{border-radius:24px;padding:12px;background:var(--glass-hi);border:2px solid var(--honey);box-shadow:var(--shadow);animation:pop .35s var(--spring)}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:none;opacity:1}}
+textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);border:1px solid var(--hair);border-radius:16px;padding:12px;font-size:17px;resize:vertical}
+@media (prefers-color-scheme:dark){ textarea.note,.transcript{background:rgba(0,0,0,.2)!important} }
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.tag{padding:8px 13px;border-radius:999px;background:var(--glass-hi);border:1px solid var(--hair);font-size:14px;font-weight:700;color:var(--ink2);transition:transform .2s var(--spring)}
+.tag.on{background:linear-gradient(180deg,var(--honey2),var(--honey));color:var(--honey-ink);border-color:transparent;transform:scale(1.04)}
+.rowbtns{display:flex;gap:10px;justify-content:flex-end}
+
+.note-card{border-radius:22px;padding:12px;display:flex;flex-direction:column;gap:9px;background:var(--solid);border:1px solid var(--stroke);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 22px -16px rgba(150,70,25,.6);position:relative;overflow:hidden}
+.note-card.k-meeting{border-left:5px solid var(--coral)} .note-card.k-memo{border-left:5px solid var(--grape)}
+.note-card .hd{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);flex-wrap:wrap}
+.note-card .hd .kind{display:inline-flex;align-items:center;gap:5px;font-weight:800;color:var(--ink);text-transform:capitalize}
+.note-card .hd .kind svg{width:16px;height:16px;fill:currentColor}
+.note-card .hd .sp{flex:1}
+.note-card .by{font-weight:800;color:var(--coral)}
+.kindbadge{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;padding:5px 10px;border-radius:999px;color:#fff}
+.kindbadge svg{width:14px;height:14px;fill:#fff}
+.kindbadge.meeting{background:linear-gradient(150deg,var(--coral2),var(--coral))} .kindbadge.memo{background:linear-gradient(150deg,var(--grape2),var(--grape))}
+.kindnote{font-size:12px;color:var(--ink2);font-weight:600}
+.note-card img,.note-card video{width:100%;max-height:60vh;object-fit:contain;border-radius:16px;background:#000}
+.note-card audio{width:100%}
+.note-card p{margin:0;white-space:pre-wrap;word-break:break-word}
+.marks{display:flex;flex-wrap:wrap;gap:6px}
+.mark{font-family:var(--mono);font-size:13px;padding:8px 10px;min-height:36px;border-radius:12px;background:var(--glass-hi);color:var(--ink);border:1px solid var(--hair)}
+.mark b{color:var(--coral)}
+.note-card .ft{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.note-card details summary{font-size:13px;color:var(--ink2);cursor:pointer;font-weight:700}
+.transcript{width:100%;min-height:80px;background:rgba(255,255,255,.65);border:1px solid var(--hair);border-radius:14px;padding:10px;font-size:15px}
+.tagline{display:flex;gap:6px;flex-wrap:wrap}
+.tagline span{font-size:12px;font-weight:800;color:#9A5B00;background:rgba(255,178,31,.2);padding:3px 9px;border-radius:999px}
+
+/* recording screen: coral (meeting) or grape (voice note), glowing 3D orb that breathes with the voice */
+#rec{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;color:#fff;overflow:hidden;
+  padding:calc(var(--sat) + 16px) max(20px,env(safe-area-inset-right)) calc(var(--sab) + 18px) max(20px,env(safe-area-inset-left));
+  background:radial-gradient(120% 70% at 50% 30%,#FF9B6A 0,#F25A3A 55%,#B7321C 100%);animation:fadein .3s var(--ease)}
+#rec.memo{background:radial-gradient(120% 70% at 50% 30%,#C59BFF 0,#8A63F2 55%,#4D2BB0 100%)}
+@keyframes fadein{from{opacity:0;transform:scale(1.03)}to{opacity:1;transform:none}}
+#rec .rh{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;opacity:.95}
+#rec .dot{width:11px;height:11px;border-radius:50%;background:#fff;animation:blink 1.2s infinite}
+#rec .mode{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;background:rgba(255,255,255,.2);font-size:13px;font-weight:800}
+#rec .title{font-size:21px;font-weight:800;margin-top:8px;text-wrap:balance;letter-spacing:-.01em}
+#rec .stage{position:relative;height:190px;display:flex;align-items:center;justify-content:center;margin:6px 0 2px;perspective:600px}
+#rec .orb{width:132px;height:132px;border-radius:50%;will-change:transform;transition:transform .08s linear;
+  background:radial-gradient(circle at 34% 28%,#fff 0,rgba(255,255,255,.85) 9%,rgba(255,226,200,.6) 22%,rgba(255,140,100,.25) 48%,rgba(255,255,255,.06) 70%),radial-gradient(circle at 60% 75%,rgba(120,20,0,.35),transparent 60%);
+  box-shadow:inset -10px -16px 30px rgba(120,20,0,.35),inset 8px 10px 22px rgba(255,255,255,.55),0 24px 40px -14px rgba(80,10,0,.6),0 0 60px 10px rgba(255,255,255,.18)}
+#rec.memo .orb{background:radial-gradient(circle at 34% 28%,#fff 0,rgba(255,255,255,.85) 9%,rgba(233,215,255,.6) 22%,rgba(170,120,255,.25) 48%,rgba(255,255,255,.06) 70%),radial-gradient(circle at 60% 75%,rgba(40,10,110,.4),transparent 60%);
+  box-shadow:inset -10px -16px 30px rgba(40,10,110,.4),inset 8px 10px 22px rgba(255,255,255,.55),0 24px 40px -14px rgba(30,0,80,.6),0 0 60px 10px rgba(255,255,255,.18)}
+#rec .ripple{position:absolute;width:132px;height:132px;border-radius:50%;border:2px solid rgba(255,255,255,.5);animation:ripple 2.4s var(--ease) infinite}
+#rec .ripple.r2{animation-delay:1.2s}
+@keyframes ripple{from{transform:scale(1);opacity:.8}to{transform:scale(1.9);opacity:0}}
+#rec .timer{font-family:var(--mono);font-size:56px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.02em;text-shadow:0 4px 18px rgba(0,0,0,.25)}
+#rec canvas{width:100%;height:44px;display:block;border-radius:14px;background:rgba(255,255,255,.14);margin-top:6px}
+#rec .marklist{flex:1;overflow:auto;margin:10px 0;display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:14px;opacity:.95}
+#rec .marklist div{animation:pop .3s var(--spring)}
+#rec .marklist div b{background:rgba(255,255,255,.25);padding:2px 6px;border-radius:6px}
+#rec .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+#rec .quick button{height:46px;border-radius:14px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);font-weight:800;font-size:13.5px;color:#fff;transition:transform .15s var(--spring)}
+#rec .quick button:active{transform:scale(.92);background:rgba(255,255,255,.4)}
+#rec .bottom{display:flex;gap:12px;align-items:center}
+#rec .markbtn{flex:1;height:70px;border-radius:22px;background:#fff;color:#C83A1E;font-size:19px;font-weight:800;box-shadow:0 6px 0 -1px rgba(0,0,0,.18),0 14px 24px -12px rgba(0,0,0,.5)}
+#rec .markbtn:active{transform:translateY(4px)}
+#rec .stop{width:70px;height:70px;border-radius:22px;background:rgba(0,0,0,.28);border:2px solid rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;flex:none}
+#rec .stop i{display:block;width:24px;height:24px;background:#fff;border-radius:6px}
+#rec.memo .quick,#rec.memo .markbtn,#rec.memo .marklist{display:none}
+#rec.memo .bottom{justify-content:center;margin-top:auto} #rec.memo .stop{width:96px;height:96px;border-radius:50%}
+#rec .warn{font-size:13px;text-align:center;margin-top:10px;opacity:.9}
+#rec .lockwarn{background:rgba(0,0,0,.28);border-radius:12px;padding:8px 10px;opacity:1}
+
+/* settings / first run */
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pick button{height:64px;border-radius:18px;background:var(--glass-hi);border:1px solid var(--stroke);font-size:18px;font-weight:800;box-shadow:inset 0 1px 0 #fff,0 4px 0 -1px rgba(214,170,140,.55)}
+.pick button.on{background:linear-gradient(160deg,var(--coral2),var(--coral));color:#fff;border-color:transparent;box-shadow:0 4px 0 -1px #D9442A}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:15px;color:var(--ink2)}
+.kv b{color:var(--ink);font-family:var(--mono)}
+#toast{position:fixed;left:50%;bottom:calc(var(--sab) + 24px);transform:translateX(-50%);z-index:60;max-width:90vw;text-align:center;padding:11px 18px;border-radius:999px;font-weight:700;font-size:14px;color:var(--ink);
+  background:var(--glass-hi);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);border:1px solid var(--stroke);box-shadow:0 14px 30px -10px rgba(120,50,20,.45);animation:toast .35s var(--spring)}
+@keyframes toast{from{transform:translate(-50%,20px) scale(.9);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+#overlay{position:fixed;inset:0;z-index:40;padding:calc(var(--sat) + 24px) 20px calc(var(--sab) + 24px);display:flex;flex-direction:column;justify-content:center;background:color-mix(in srgb,var(--bg) 70%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+#overlay .card{animation:pop .45s var(--spring)}
+.empty{color:var(--ink2);text-align:center;padding:18px 0;font-size:15px}
+.banner{background:rgba(47,124,246,.1);color:var(--sky);border-radius:16px;padding:11px 13px;font-size:14px;font-weight:600;display:flex;justify-content:space-between;gap:10px;align-items:center}
+
+/* reports */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats div{background:var(--glass-hi);border:1px solid var(--stroke);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;box-shadow:inset 0 1px 0 #fff}
+.stats b{font-size:24px;font-family:var(--mono);letter-spacing:-.02em} .stats span{font-size:12.5px;color:var(--ink2);font-weight:600}
+.stats .sm b{color:var(--coral)} .stats .sv b{color:var(--grape)}
+.rh3{margin:0;font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink2);font-weight:800}
+.rtag{font-size:13px;font-weight:800;color:#B06A00;margin-top:4px}
+.rl{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.rl.rother{color:var(--ink2)}
+.rv{color:var(--sky);text-decoration:none;font-weight:800}
+.rby{font-size:12px;color:var(--ink3)}
+.rtg{font-size:12px;font-weight:800;color:#9A5B00;background:rgba(255,178,31,.2);padding:2px 8px;border-radius:999px}
+.rtg.memo{color:#fff;background:var(--grape)}
+.rvh{display:flex;align-items:center;gap:9px;color:inherit;text-decoration:none} .rvh b{flex:1;font-size:18px} .rt{font-family:var(--mono);font-size:13px;color:var(--ink2)}
+.rmeta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--ink2)}
+.rsum{white-space:pre-wrap;color:var(--ink)!important}
+.repcard{border-radius:28px;padding:18px}
+
+@media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button class="back" id="back" hidden aria-label="Back">‹</button>
+  <h1 id="title">Mill Notes</h1>
+  <span class="net" id="net" title="Connection"></span>
+  <button class="who" id="who">—</button>
+</header>
+
+<main id="view"></main>
+
+<!-- recording overlay -->
+<div id="rec" hidden>
+  <div class="rh"><span class="dot"></span><span class="mode" id="rec-mode">Meeting recording</span><span style="flex:1"></span><span id="rec-size"></span></div>
+  <div class="title" id="rec-title"></div>
+  <div class="stage" aria-hidden="true"><span class="ripple"></span><span class="ripple r2"></span><div class="orb" id="rec-orb"></div></div>
+  <div class="timer" id="rec-timer">00:00</div>
+  <div style="text-align:center;font-size:13px;font-weight:700;opacity:.9" id="rec-by">Recording</div>
+  <canvas id="rec-meter" width="600" height="88"></canvas>
+  <div class="marklist" id="rec-marks"></div>
+  <div class="quick" id="rec-quick">
+    <button data-tag="Price">Price</button><button data-tag="Spec">Spec</button><button data-tag="Lead time">Lead time</button><button data-tag="MOQ">MOQ</button>
+    <button data-tag="Sample">Sample</button><button data-tag="Follow-up">Follow-up</button><button data-tag="Question">Question</button><button data-tag="Important">Important</button>
+  </div>
+  <div class="bottom">
+    <button class="markbtn" id="rec-mark">Mark moment</button>
+    <button class="stop" id="rec-stop" aria-label="Stop and save"><i></i></button>
+  </div>
+  <div class="warn lockwarn" id="rec-lockwarn" hidden>This phone can't hold the screen on. Set Settings › Display &amp; Brightness › Auto-Lock › Never.</div>
+  <div class="warn">Keep the screen on. Recording stops if the phone locks or you switch apps.</div>
+</div>
+
+<!-- first-run -->
+<div id="overlay" hidden>
+  <div class="card glass">
+    <h2>Who's using this phone?</h2>
+    <p>Every note is stamped with the name. You can change it later from the top-right button.</p>
+    <div class="pick"><button data-u="Sharoon">Sharoon</button><button data-u="Naveed">Naveed</button></div>
+  </div>
+</div>
+
+<input type="file" id="in-photo" accept="image/*" capture="environment" class="sr">
+<input type="file" id="in-video" accept="video/*" capture="environment" class="sr">
+<input type="file" id="in-import" accept="image/*,video/*,audio/*" class="sr" multiple>
+<div id="toast" hidden></div>
+
+<script>
+/* ---------- data ---------- */
+const MEETINGS = [
+ {id:1, day:'02', dow:'Tue', date:'2026-10-27', time:'08:30–10:30', name:'HongYe Factory', detail:'No. 21 Liumaiwan Rd', contact:'Troy', phone:'+86 138 1547 5565'},
+ {id:2, day:'02', dow:'Tue', date:'2026-10-27', time:'10:30–12:00', name:'Sachsen Furnaces', detail:'At HongYe office · Spec S12-R3'},
+ {id:3, day:'02', dow:'Tue', date:'2026-10-27', time:'13:30–16:00', name:'Dingsheng Aluminium', detail:'Jingkou Park · 100-mill plant'},
+ {id:4, day:'02', dow:'Tue', date:'2026-10-27', time:'16:15–18:00', name:'China Energy Foil', detail:'Battery foil cleanroom'},
+ {id:5, day:'03', dow:'Wed', date:'2026-10-28', time:'09:15–11:30', name:'Curve Roll Grinder', detail:'Changzhou · Spec S09 & S10'},
+ {id:6, day:'03', dow:'Wed', date:'2026-10-28', time:'13:30–15:30', name:'Longray Furnaces', detail:'Suzhou', contact:'Zhang', phone:'+86 189 5110 8961'},
+ {id:7, day:'03', dow:'Wed', date:'2026-10-28', time:'18:30–20:00', name:'Shanghai Fronject', detail:'At Primus Hotel · OMR + ROR S13'},
+ {id:8, day:'04', dow:'Thu', date:'2026-10-29', time:'13:35–14:30', name:'Chinalco Foil Plant', detail:'Tour plant first · leave by 14:30'},
+ {id:9, day:'04', dow:'Thu', date:'2026-10-29', time:'14:45–15:35', name:'CNPT Luoyang HQ', detail:'Leave 15:35 sharp for the station', contact:'Wang', phone:'+86 139 3880 4883'},
+ {id:10,day:'05', dow:'Fri', date:'2026-10-30', time:'08:45–11:00', name:'Zhuoshen Mill Factory', detail:'Zhuozhou', contact:'Tiger', phone:'+86 134 6312 6059'},
+ {id:11,day:'05', dow:'Fri', date:'2026-10-30', time:'11:15–12:45', name:'NCA Battery Foil Plant', detail:'Robotic spool & roll handling'},
+ {id:12,day:'05', dow:'Fri', date:'2026-10-30', time:'14:00–16:30', name:'NCHM Office & Factory', detail:'Zhuozhou', contact:'Vivien', phone:'+86 136 6130 3116'},
+];
+const DAYLABEL = {'02':'Tue 27 Oct · Zhenjiang','03':'Wed 28 Oct · Changzhou → Suzhou → Shanghai','04':'Thu 29 Oct · Luoyang','05':'Fri 30 Oct · Zhuozhou'};
+const TAGS = ['Price','Spec','Lead time','MOQ','Sample','Follow-up','Question','Important'];
+const ICON = {
+  mic:'<svg viewBox="0 0 24 24"><path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 0 0-8 0v5a4 4 0 0 0 4 4zm6-4a1 1 0 1 1 2 0 8 8 0 0 1-7 7.94V21h2a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2h2v-2.06A8 8 0 0 1 4 11a1 1 0 1 1 2 0 6 6 0 0 0 12 0z"/></svg>',
+  cam:'<svg viewBox="0 0 24 24"><path d="M9 3h6l1.5 2H20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h3.5zm3 5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9z"/></svg>',
+  vid:'<svg viewBox="0 0 24 24"><path d="M3 6h12a2 2 0 0 1 2 2v2.5l4-2.5v8l-4-2.5V16a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/></svg>',
+  txt:'<svg viewBox="0 0 24 24"><path d="M4 4h16v2H4zm0 5h16v2H4zm0 5h10v2H4zm12.5-1.5 3 3L12 23H9v-3z"/></svg>',
+  pin:'<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7zm0 4.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>',
+  memo:'<svg viewBox="0 0 24 24"><path d="M5 3h14a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-6l-5 4v-4H5a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3zm2 6a1 1 0 0 0-1 1v1a1 1 0 1 0 2 0v-1a1 1 0 0 0-1-1zm3.5-2a1 1 0 0 0-1 1v5a1 1 0 1 0 2 0V8a1 1 0 0 0-1-1zm3.5 1a1 1 0 0 0-1 1v3a1 1 0 1 0 2 0V9a1 1 0 0 0-1-1zm3.5-1.5a1 1 0 0 0-1 1v6a1 1 0 1 0 2 0v-6a1 1 0 0 0-1-1z"/></svg>',
+  meet:'<svg viewBox="0 0 24 24"><path d="M8 11a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7zm8 0a3 3 0 1 1 0-6 3 3 0 0 1 0 6zM1.5 19c0-3.3 2.9-6 6.5-6s6.5 2.7 6.5 6v1h-13zm14.6 1v-1c0-1.9-.7-3.6-1.9-4.9.6-.2 1.2-.3 1.8-.3 3.1 0 5.5 2.3 5.5 5.2v1z"/></svg>',
+  rep:'<svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 12v2h2v-2zm4-4v6h2v-6zm4-4v10h2V7z"/></svg>',
+  trip:'<svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>',
+};
+const AKIND = {meeting:{label:'Meeting recording', short:'meeting recording', file:'meeting', icon:'meet', note:'for Chinese transcription + translation'},
+               memo:{label:'Voice note', short:'voice note', file:'voicenote', icon:'memo', note:'your own memo · for summary'}};
+const akind = n => (n.kind === 'memo' ? 'memo' : 'meeting'); // older recordings are meeting recordings
+
+/* ---------- IndexedDB ---------- */
+let dbp = null;
+function idb(){
+  if (dbp) return dbp;
+  dbp = new Promise((res, rej) => {
+    const r = indexedDB.open('millnotes', 1);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      d.createObjectStore('meetings', {keyPath:'id'});
+      const n = d.createObjectStore('notes', {keyPath:'id', autoIncrement:true});
+      n.createIndex('meetingId','meetingId');
+      const p = d.createObjectStore('parts', {keyPath:'id', autoIncrement:true});
+      p.createIndex('rec','rec');
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  return dbp;
+}
+function tx(store, mode, fn){
+  return idb().then(d => new Promise((res, rej) => {
+    const t = d.transaction(store, mode); const s = t.objectStore(store);
+    let out; try { out = fn(s); } catch(e){ rej(e); return; }
+    t.oncomplete = () => res(out instanceof IDBRequest ? out.result : out); // a missing key resolves to undefined, not the request
+    t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  }));
+}
+const getAll = (store, index, key) => tx(store, 'readonly', s => index ? s.index(index).getAll(key) : s.getAll());
+const put = (store, v) => tx(store, 'readwrite', s => s.put(v));
+const add = (store, v) => tx(store, 'readwrite', s => s.add(v));
+const del = (store, k) => tx(store, 'readwrite', s => s.delete(k));
+const get = (store, k) => tx(store, 'readonly', s => s.get(k));
+
+/* ---------- state ---------- */
+const $ = (q, el=document) => el.querySelector(q);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let user = null; try { user = localStorage.getItem('mn.user'); } catch(e){}
+// Personal links (/sharoon/, /naveed/) carry the name in a meta tag, so there is no name picker.
+const FIXED_USER = ((document.querySelector('meta[name="mn-user"]') || {}).content || new URLSearchParams(location.search).get('u') || '').trim();
+if (['Sharoon','Naveed'].includes(FIXED_USER) && user !== FIXED_USER && !sessionStorage.getItem('mn.switched')){ user = FIXED_USER; try { localStorage.setItem('mn.user', user); } catch(e){} }
+let meetingState = {}; // id -> {checkedIn, at, lat, lng, summary}
+let noteCache = {};    // meetingId -> notes[]
+let urls = [];         // object URLs to revoke on route change
+
+function toast(msg, ms=2200){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => t.hidden = true, ms); }
+/* All times are China time (the itinerary is in local China time), whatever zone the phone is set to. */
+const TZ = 'Asia/Shanghai';
+const _cnParts = new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
+function cn(d){ const p = {}; _cnParts.formatToParts(new Date(d)).forEach(x => p[x.type] = x.value); return {date:`${p.year}-${p.month}-${p.day}`, hm:`${p.hour}:${p.minute}`, mins: Number(p.hour)*60 + Number(p.minute), stamp:`${p.year}${p.month}${p.day}-${p.hour}${p.minute}`}; }
+function fmtTime(d){ return cn(d).hm; }
+function fmtDateTime(d){ const c = cn(d); return `${c.date} ${c.hm} (China time)`; }
+function fmtDur(s){ s = Math.round(s); const m = Math.floor(s/60), r = s%60; return (m<10?'0':'')+m+':'+(r<10?'0':'')+r; }
+function fmtBytes(b){ return b > 1e9 ? (b/1e9).toFixed(2)+' GB' : b > 1e6 ? (b/1e6).toFixed(1)+' MB' : Math.round(b/1e3)+' KB'; }
+function mins(hhmm){ const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
+
+function currentMeeting(){
+  const {date: today, mins: cur} = cn(Date.now());
+  const span = m => { const [a,b] = m.time.split('–'); return [mins(a), mins(b)]; };
+  const todays = MEETINGS.filter(m => m.date === today);
+  // 1. a visit that is on right now  2. one starting within 30 min  3. one that ended under 30 min ago
+  for (const m of todays){ const [a,b] = span(m); if (cur >= a && cur < b) return {m, why:'Now'}; }
+  for (const m of todays){ const [a] = span(m); if (cur >= a-30 && cur < a) return {m, why:'Next'}; }
+  for (const m of todays.slice().reverse()){ const [,b] = span(m); if (cur >= b && cur <= b+30) return {m, why:'Just ended'}; }
+  for (const m of todays){ const [a] = span(m); if (cur < a) return {m, why:'Next'}; }
+  const future = MEETINGS.filter(m => m.date > today);
+  if (future.length) return {m:future[0], why:'Next'};
+  return {m:MEETINGS[MEETINGS.length-1], why:'Last visit'};
+}
+
+async function loadState(){
+  const rows = await getAll('meetings'); meetingState = {}; rows.forEach(r => meetingState[r.id] = r);
+  const notes = await getAll('notes'); noteCache = {}; notes.forEach(n => (noteCache[n.meetingId] ||= []).push(n));
+}
+
+/* ---------- router ---------- */
+window.addEventListener('hashchange', render);
+async function render(){
+  urls.forEach(u => URL.revokeObjectURL(u)); urls = [];
+  await loadState();
+  const h = location.hash;
+  $('#who').textContent = user || 'Name'; $('#who').dataset.i = (user || '?')[0];
+  const v = $('#view'), fresh = h !== lastRoute; lastRoute = h;
+  if (fresh){ v.classList.remove('enter'); window.scrollTo(0, 0); }
+  await route(h);
+  if (fresh){ void v.offsetWidth; v.classList.add('enter'); } // replay the entrance animation only on navigation
+}
+let lastRoute = null;
+function route(h){
+  if (h === '#settings') return renderSettings();
+  if (h === '#trip') return renderReport('trip');
+  const dm = h.match(/^#day(0[2-5])$/); if (dm) return renderReport('day' + dm[1]);
+  const mm = h.match(/^#m(\d+)$/);
+  if (mm) return renderMeeting(Number(mm[1]));
+  return renderHome();
+}
+function setTop(title, back){ $('#title').textContent = title; $('#back').hidden = !back; }
+$('#back').onclick = () => { location.hash = ''; };
+$('#who').onclick = () => { location.hash = '#settings'; };
+
+/* ---------- views ---------- */
+function actionsHtml(id){
+  return `<div class="actions">
+    <button class="hero" data-a="rec" data-m="${id}"><span class="ic">${ICON.meet}</span><span><b>Record meeting</b><span>Supplier talk · translated later</span></span></button>
+    <div class="tiles">
+      <button class="act memo" data-a="memo" data-m="${id}"><span class="bub grape">${ICON.memo}</span>Voice note</button>
+      <button class="act" data-a="photo" data-m="${id}"><span class="bub peach">${ICON.cam}</span>Photo</button>
+      <button class="act" data-a="video" data-m="${id}"><span class="bub rose">${ICON.vid}</span>Video</button>
+      <button class="act" data-a="text" data-m="${id}"><span class="bub honey">${ICON.txt}</span>Note</button>
+    </div>
+  </div>`;
+}
+function counts(id){
+  const ns = noteCache[id] || []; const c = {audio:0, meeting:0, memo:0, photo:0, video:0, text:0};
+  ns.forEach(n => { c[n.type]++; if (n.type === 'audio') c[akind(n)]++; }); return c;
+}
+function checkinHtml(m){
+  const st = meetingState[m.id];
+  if (st && st.checkedIn) return `<div class="checkin"><span class="chip ok">✓ Checked in ${fmtTime(st.at)}${st.lat ? ' · GPS' : ''}</span><button class="btn ghost small" data-a="undo" data-m="${m.id}">Undo</button></div>`;
+  return `<div class="checkin"><span class="chip">Not checked in</span><button class="btn primary" data-a="checkin" data-m="${m.id}">${ICON.pin} Check in</button></div>`;
+}
+function reportDay(){ const {m} = currentMeeting(); return m.day; }
+
+function renderHome(){
+  setTop('Mill Notes', false);
+  const {m, why} = currentMeeting();
+  const days = ['02','03','04','05'];
+  const rd = reportDay();
+  let html = `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Mill Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>
+  <section class="now glass"><div class="eyebrow">${why === 'Now' ? '<span class="live"></span>' : ''}${why} · ${m.dow} ${m.time}</div>
+    <h2><span class="num">${String(m.id).padStart(2,'0')}</span>${esc(m.name)}</h2>
+    <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
+    <div style="margin-top:14px">${actionsHtml(m.id)}</div>${checkinHtml(m)}
+    <div style="margin-top:12px;text-align:right"><a href="#m${m.id}" class="btn ghost small">Open visit ›</a></div>
+  </section>
+  <div class="reportbar">
+    <a href="#day${rd}" class="repbtn glass"><span class="bub honey">${ICON.rep}</span><span>${rd === m.day && m.date === cn(Date.now()).date ? "Today's" : `${MEETINGS.find(x => x.day === rd).dow}'s`} report<small>${DAYLABEL[rd].split(' · ')[1]}</small></span></a>
+    <a href="#trip" class="repbtn glass"><span class="bub peach">${ICON.trip}</span><span>Trip report<small>All 12 visits</small></span></a>
+  </div>`;
+  for (const d of days){
+    const ms = MEETINGS.filter(x => x.day === d);
+    html += `<section class="day"><h3><span>${DAYLABEL[d]}</span><a href="#day${d}" class="dayrep">${ICON.rep}Day report</a></h3>` + ms.map(x => {
+      const st = meetingState[x.id]; const c = counts(x.id);
+      return `<a href="#m${x.id}" class="row ${st && st.checkedIn ? 'done' : ''} ${x.id === m.id ? 'active' : ''}">
+        <span class="num">${String(x.id).padStart(2,'0')}</span>
+        <span class="t"><b>${esc(x.name)}</b><span>${x.time}</span></span>
+        <span class="counts">${c.meeting?`<i class="cm">${ICON.meet}${c.meeting}</i>`:''}${c.memo?`<i class="cv">${ICON.memo}${c.memo}</i>`:''}${c.photo?`<i>${ICON.cam}${c.photo}</i>`:''}${c.video?`<i>${ICON.vid}${c.video}</i>`:''}${c.text?`<i>${ICON.txt}${c.text}</i>`:''}</span>
+        <span class="chev">›</span></a>`;
+    }).join('') + `</section>`;
+  }
+  html += `<a href="#trip" class="btn ghost" style="margin-top:4px">${ICON.trip} Trip report: all 12 visits ›</a>`;
+  $('#view').innerHTML = html;
+}
+
+function renderMeeting(id){
+  const m = MEETINGS.find(x => x.id === id); if (!m) { location.hash = ''; return; }
+  setTop(`${String(id).padStart(2,'0')} · ${m.name}`, true);
+  const st = meetingState[id] || {};
+  const notes = (noteCache[id] || []).slice().sort((a,b) => b.createdAt - a.createdAt);
+  let html = `<section class="mhead glass"><div class="eyebrow">Visit ${String(id).padStart(2,'0')} · ${m.dow} ${m.time}</div>
+    <h2>${esc(m.name)}</h2>
+    <div class="meta">${esc(m.detail)}${m.contact ? `<br><b>${esc(m.contact)}</b> <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
+    ${checkinHtml(m)}</section>
+    ${actionsHtml(id)}
+    <div id="composer-slot"></div>
+    <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span class="chip" id="sum-state" style="font-size:11px" ${st.summary ? '' : 'hidden'}>saved</span></div>
+      <textarea class="note" id="summary" placeholder="Two lines after the visit: what they offer, price indication, next step…">${esc(st.summary || '')}</textarea></section>
+    <div class="section-h"><h3>Notes (${notes.length})</h3><button class="btn ghost small" data-a="export" data-m="${id}">Export visit</button></div>`;
+  if (!notes.length) html += `<div class="empty">Nothing yet. Tap <b>Record meeting</b> as the meeting starts, or <b>Voice note</b> for your own memo.</div>`;
+  html += notes.map(noteHtml).join('');
+  html += `<div style="text-align:center;margin-top:6px"><button class="btn ghost small" data-a="import" data-m="${id}">Import from camera roll</button></div>`;
+  $('#view').innerHTML = html;
+  const sum = $('#summary'); let sh;
+  sum.addEventListener('input', () => { clearTimeout(sh); const ss = $('#sum-state'); ss.hidden = false; ss.textContent = '…'; sh = setTimeout(async () => {
+    const v = sum.value; await patchMeeting(id, {summary: v}); const s = $('#sum-state'); if (s) s.textContent = 'saved'; }, 500); });
+  if (pendingComposer && pendingComposer.mid === id){ const p = pendingComposer; pendingComposer = null; openComposer(p.mid, p.existing); }
+}
+/* Read-modify-write on the stored row, so concurrent saves (summary, GPS, undo) never overwrite each other. */
+async function patchMeeting(id, fields){
+  const cur = (await get('meetings', id)) || {id};
+  Object.assign(cur, fields); await put('meetings', cur); meetingState[id] = cur; return cur;
+}
+function noteHtml(n){
+  const ak = n.type === 'audio' ? akind(n) : null;
+  const k = ak ? AKIND[ak].icon : {photo:'cam', video:'vid', text:'txt'}[n.type];
+  let body = '';
+  if (n.type === 'text') body = `<p>${esc(n.text)}</p>`;
+  if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">`; }
+  if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>`; }
+  if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" controls preload="metadata"></audio>`
+    + (n.marks && n.marks.length ? `<div class="marks">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtDur(x.t)}</b> ${esc(x.tag)}</button>`).join('')}</div>` : '')
+    + `<details><summary>${ak === 'memo' ? 'Transcript' : 'Chinese transcript / translation'}${n.transcript ? ' ✓' : ''}</summary>
+       <textarea class="transcript" data-tr="${n.id}" placeholder="${ak === 'memo' ? 'Optional: paste a transcript of your voice note.' : 'Paste the Mill Transcribe result here, or leave it for after the trip.'}">${esc(n.transcript || '')}</textarea></details>`; }
+  if (n.type !== 'text' && n.text) body += `<p style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>`;
+  const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
+  const extra = n.type === 'audio' ? ` · ${fmtDur(n.duration || 0)}${n.recovered ? ' · recovered' : ''}` : n.blob ? ` · ${fmtBytes(n.blob.size)}` : '';
+  const kindHtml = ak ? `<span class="kindbadge ${ak}">${ICON[AKIND[ak].icon]}${AKIND[ak].label}</span>` : `<span class="kind">${ICON[k]}${n.type}</span>`;
+  return `<article class="note-card${ak ? ' k-' + ak : ''}" data-id="${n.id}">
+    <div class="hd">${kindHtml}<span>${fmtTime(n.createdAt)}${extra}</span><span class="sp"></span><span class="by">${esc(n.by || '')}</span></div>
+    ${ak ? `<div class="kindnote">${AKIND[ak].note}</div>` : ''}${tags}${body}
+    <div class="ft">${n.blob ? `<button class="btn ghost small" data-a="share" data-n="${n.id}">Share</button>` : ''}<button class="btn ghost small" data-a="caption" data-n="${n.id}">${n.type === 'text' ? 'Edit' : 'Caption'}</button><button class="btn danger small" data-a="del" data-n="${n.id}">Delete</button></div>
+  </article>`;
+}
+
+async function renderSettings(){
+  setTop('Settings', true);
+  let est = null; try { est = await navigator.storage.estimate(); } catch(e){}
+  const all = Object.values(noteCache).flat(); const bytes = all.reduce((s,n) => s + (n.blob ? n.blob.size : 0), 0);
+  $('#view').innerHTML = `
+    <section class="card"><h2>Who's recording</h2><div class="pick"><button data-u="Sharoon" class="${user==='Sharoon'?'on':''}">Sharoon</button><button data-u="Naveed" class="${user==='Naveed'?'on':''}">Naveed</button></div></section>
+    <section class="card"><h2>Storage on this phone</h2>
+      <div class="kv"><span>Notes</span><b>${all.length}</b></div>
+      <div class="kv"><span>Media stored</span><b>${fmtBytes(bytes)}</b></div>
+      ${est ? `<div class="kv"><span>Space available</span><b>${fmtBytes((est.quota||0) - (est.usage||0))}</b></div>` : ''}
+      <p>Everything stays on this phone until you export it. Don't delete the app from the Home Screen before exporting: that deletes the notes too.</p></section>
+    <section class="card"><h2>Export</h2>
+      <p>Per visit: open the visit and tap <b>Export visit</b>. It opens the share sheet with the audio, photos, video and a text file of the notes. Send to Files, AirDrop, Claude, or a Shortcut.</p>
+      <button class="btn primary" data-a="exporttext">Copy all notes as text</button>
+      <button class="btn ghost" data-a="exportjson">Share notes as JSON</button>
+      <a href="#trip" class="btn ghost" style="text-decoration:none">Trip report ›</a></section>
+    <section class="card"><h2>Meeting recordings vs voice notes</h2>
+      <p><b>Meeting recordings</b> (coral) are the supplier conversations: these get Chinese transcription + translation. <b>Voice notes</b> (purple) are your own memos: these get summarised.</p>
+      <p>Open a meeting recording › <b>Share</b> › <b>Mill Transcribe</b> (Shortcuts app: Transcribe Audio → Translate Text). Paste the result into the note's Transcript box. Works offline.</p></section>
+    <section class="card"><div class="kv"><span>App version</span><b>${APP_VERSION}</b></div><div class="kv"><span>Connection</span><b id="net-txt">${navigator.onLine ? 'online' : 'offline'}</b></div></section>`;
+}
+
+/* ---------- actions ---------- */
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-a],[data-u]'); if (!b) return;
+  if (b.dataset.u){ user = b.dataset.u; try { localStorage.setItem('mn.user', user); if (FIXED_USER) sessionStorage.setItem('mn.switched', '1'); } catch(err){} $('#overlay').hidden = true; render(); return; }
+  const a = b.dataset.a, mid = Number(b.dataset.m), nid = Number(b.dataset.n);
+  if (a === 'rec') return startRecording(mid, 'meeting');
+  if (a === 'memo') return startRecording(mid, 'memo');
+  if (a === 'photo'){ pendingMeeting = mid; $('#in-photo').click(); return; }
+  if (a === 'video'){ pendingMeeting = mid; $('#in-video').click(); return; }
+  if (a === 'import'){ pendingMeeting = mid; $('#in-import').click(); return; }
+  if (a === 'text') return openComposer(mid);
+  if (a === 'checkin') return checkIn(mid);
+  if (a === 'undo'){ await patchMeeting(mid, {checkedIn: false}); render(); return; }
+  if (a === 'share') return shareNote(nid);
+  if (a === 'caption') return captionNote(nid);
+  if (a === 'del') return deleteNote(nid, b);
+  if (a === 'export') return exportMeeting(mid);
+  if (a === 'exporttext') return exportText();
+  if (a === 'exportjson') return exportJson();
+  if (a === 'repshare') return shareReport(b.dataset.s);
+  if (a === 'repcopy') return copyReport(b.dataset.s);
+});
+// Tap a mark: play the recording from 5 s before that moment.
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-seek]'); if (!b) return;
+  const au = document.querySelector(`.note-card[data-id="${b.dataset.n}"] audio`); if (!au) return;
+  au.currentTime = Math.max(0, Number(b.dataset.seek) - 5); au.play().catch(() => {});
+});
+document.addEventListener('change', async (e) => {
+  const t = e.target; if (!t.matches('#in-photo,#in-video,#in-import')) return;
+  const files = [...t.files]; t.value = ''; if (!files.length || pendingMeeting == null) return;
+  let saved = 0;
+  try {
+    for (const f of files){
+      const type = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : 'photo';
+      await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: Date.now(), by: user, text:'', tags:[], name: f.name}); saved++;
+    }
+    toast(saved === 1 ? 'Saved' : `Saved ${saved} files`);
+  } catch(err){ toast(`Saved ${saved} of ${files.length}. Storage error: ${(err && err.message) || err}`, 6000); }
+  if (!meetingState[pendingMeeting]?.checkedIn) await checkIn(pendingMeeting, true);
+  render();
+});
+document.addEventListener('input', (e) => {
+  const t = e.target; if (!t.matches('textarea[data-tr]')) return;
+  clearTimeout(t._h); t._h = setTimeout(async () => { const n = await get('notes', Number(t.dataset.tr)); if (n){ n.transcript = t.value; await put('notes', n); } }, 600);
+});
+let pendingMeeting = null;
+
+async function checkIn(mid, silent){
+  const at = Date.now();
+  await patchMeeting(mid, {checkedIn: true, at, by: user, lat: undefined, lng: undefined, acc: undefined});
+  if (!silent) { toast('Checked in'); render(); }
+  if (!('geolocation' in navigator)) return;
+  // Offline in China there is no network location, so ask for real GPS and give it time.
+  const save = async p => {
+    const st = await get('meetings', mid);
+    if (!st || !st.checkedIn || st.at !== at) return; // undone or re-checked-in meanwhile
+    await patchMeeting(mid, {lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy});
+    if (!editing() && !rec) render();
+  };
+  const ask = (tries) => navigator.geolocation.getCurrentPosition(save, () => { if (tries > 0) ask(tries - 1); }, {enableHighAccuracy:true, timeout:30000, maximumAge:120000});
+  ask(1);
+}
+
+let pendingComposer = null; // opened by renderMeeting once the visit page exists
+function editing(){ const a = document.activeElement; return !!(document.querySelector('#ntext') || document.querySelector('.cap') || (a && a.tagName === 'TEXTAREA')); }
+function openComposer(mid, existing){
+  const slot = $('#composer-slot');
+  if (location.hash !== `#m${mid}` || !slot){ pendingComposer = {mid, existing}; if (location.hash !== `#m${mid}`) location.hash = `#m${mid}`; return; }
+  const sel = new Set(existing ? existing.tags || [] : []);
+  slot.innerHTML = `<section class="composer"><textarea class="note" id="ntext" placeholder="Type or dictate (mic key on the keyboard works offline for English)…">${esc(existing ? existing.text : '')}</textarea>
+    <div class="tags">${TAGS.map(t => `<button class="tag ${sel.has(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div>
+    <div class="rowbtns"><button class="btn ghost" id="ncancel">Cancel</button><button class="btn primary" id="nsave">Save note</button></div></section>`;
+  slot.querySelectorAll('.tag').forEach(b => b.onclick = () => { b.classList.toggle('on'); const t = b.dataset.t; sel.has(t) ? sel.delete(t) : sel.add(t); });
+  const ta = $('#ntext'); ta.focus();
+  $('#ncancel').onclick = () => slot.innerHTML = '';
+  $('#nsave').onclick = async () => {
+    const text = ta.value.trim(); if (!text && !sel.size) { slot.innerHTML = ''; return; }
+    if (existing){ existing.text = text; existing.tags = [...sel]; await put('notes', existing); }
+    else await add('notes', {meetingId: mid, type:'text', text, tags:[...sel], createdAt: Date.now(), by: user});
+    if (!meetingState[mid]?.checkedIn) await checkIn(mid, true);
+    toast('Saved'); render();
+  };
+  slot.scrollIntoView({block:'center'});
+}
+async function captionNote(nid){
+  const n = await get('notes', nid); if (!n) return;
+  if (n.type === 'text') return openComposer(n.meetingId, n);
+  const card = document.querySelector(`.note-card[data-id="${nid}"]`);
+  if (card.querySelector('.cap')) return;
+  const box = document.createElement('div'); box.className = 'cap';
+  box.innerHTML = `<textarea class="transcript" placeholder="Caption: what is this?">${esc(n.text || '')}</textarea><div class="tags">${TAGS.map(t => `<button class="tag ${(n.tags||[]).includes(t)?'on':''}" data-t="${t}">${t}</button>`).join('')}</div><div class="rowbtns"><button class="btn primary small">Save</button></div>`;
+  card.insertBefore(box, card.querySelector('.ft'));
+  const sel = new Set(n.tags || []);
+  box.querySelectorAll('.tag').forEach(b => b.onclick = () => { b.classList.toggle('on'); const t = b.dataset.t; sel.has(t) ? sel.delete(t) : sel.add(t); });
+  box.querySelector('.btn').onclick = async () => {
+    const text = box.querySelector('textarea').value.trim();
+    const fresh = await get('notes', nid); if (!fresh) return; // re-read: keeps a transcript typed meanwhile
+    fresh.text = text; fresh.tags = [...sel]; await put('notes', fresh); toast('Saved'); render(); };
+}
+async function deleteNote(nid, btn){
+  if (btn.dataset.armed){ await del('notes', nid); toast('Deleted'); render(); return; }
+  btn.dataset.armed = '1'; btn.textContent = 'Tap again to delete'; setTimeout(() => { if (btn.isConnected){ delete btn.dataset.armed; btn.textContent = 'Delete'; } }, 2500);
+}
+
+/* ---------- reports (day + whole trip), built on the phone from local notes, works offline ---------- */
+const DAYS = ['02','03','04','05'];
+const pad2 = n => String(n).padStart(2,'0');
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+// One visit → everything a report needs.
+function visitFacts(m){
+  const st = meetingState[m.id] || {};
+  const ns = (noteCache[m.id] || []).slice().sort((a,b) => a.createdAt - b.createdAt);
+  const items = []; // {tag, text, by, at, kind}
+  const other = []; // untagged typed notes and captions
+  let recSecs = 0, memoSecs = 0, transcripts = 0; const memos = [];
+  for (const n of ns){
+    const ak = n.type === 'audio' ? akind(n) : null;
+    if (ak === 'meeting'){ recSecs += n.duration || 0; if (n.transcript) transcripts++;
+      for (const k of (n.marks || [])) items.push({tag: TAGS.includes(k.tag) ? k.tag : 'Marked', text: `at ${fmtDur(k.t)} in the ${fmtTime(n.createdAt)} meeting recording`, by: n.by, at: n.createdAt + k.t*1000, kind:'mark'}); }
+    if (ak === 'memo'){ memoSecs += n.duration || 0; memos.push({at: n.createdAt, dur: n.duration || 0, by: n.by, text: (n.text || '').trim(), transcript: (n.transcript || '').trim()}); }
+    const text = (n.text || '').trim();
+    const what = ak ? AKIND[ak].short : n.type;
+    const label = n.type === 'text' ? text : text ? `${what} — ${text}` : `${what} at ${fmtTime(n.createdAt)}`;
+    if (ak === 'memo' && !(n.tags && n.tags.length)) continue; // untagged voice notes are listed in their own section
+    if (n.tags && n.tags.length) n.tags.forEach(t => items.push({tag: t, text: label, by: n.by, at: n.createdAt, kind: n.type}));
+    else if (text) other.push({text: label, by: n.by, at: n.createdAt});
+  }
+  const c = {audio:0, meeting:0, memo:0, photo:0, video:0, text:0}; ns.forEach(n => { c[n.type]++; if (n.type === 'audio') c[akind(n)]++; });
+  return {m, st, items, other, memos, c, recSecs, memoSecs, transcripts, empty: !ns.length && !st.summary && !st.checkedIn};
+}
+function byTag(facts){ const out = {}; for (const f of facts) for (const it of f.items) (out[it.tag] ||= []).push({...it, m: f.m}); return out; }
+const TOPIC_ORDER = ['Price','Spec','Lead time','MOQ','Sample','Follow-up','Question','Important','Marked'];
+function fmtHours(s){ s = Math.round(s); const h = Math.floor(s/3600), m = Math.round((s%3600)/60); return h ? `${h} h ${m} min` : `${m} min`; }
+function reportScope(scope){
+  const day = scope.startsWith('day') ? scope.slice(3) : null;
+  const ms = day ? MEETINGS.filter(m => m.day === day) : MEETINGS;
+  const facts = ms.map(visitFacts);
+  const title = day ? `Day report · ${DAYLABEL[day]}` : 'Trip report · China foil-mill tour, 27–30 Oct 2026';
+  const file = day ? `MillNotes_Day${day}_${ms[0].dow}${ms[0].date.slice(8)}Oct_${user || ''}.md` : `MillNotes_TripReport_${user || ''}.md`;
+  return {day, ms, facts, title, file};
+}
+function totals(facts){
+  const t = {visits: facts.length, checked: 0, audio:0, meeting:0, memo:0, photo:0, video:0, text:0, recSecs:0, memoSecs:0, summaries:0};
+  for (const f of facts){ if (f.st.checkedIn) t.checked++; if (f.st.summary) t.summaries++; t.recSecs += f.recSecs; t.memoSecs += f.memoSecs; for (const k of ['audio','meeting','memo','photo','video','text']) t[k] += f.c[k]; }
+  return t;
+}
+
+/* Markdown, for sharing to Files / AirDrop / Claude */
+function reportMarkdown(scope){
+  const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
+  let s = `# ${R.title}\n\nPrepared from ${user || 'this phone'}'s notes on this phone · generated ${fmtDateTime(Date.now())}\n\n`;
+  s += `## At a glance\n\n- Visits: ${t.checked} of ${t.visits} checked in\n- Meeting recordings (to transcribe + translate): ${t.meeting} (${fmtHours(t.recSecs)})\n- Voice notes (own memos, to summarise): ${t.memo} (${fmtHours(t.memoSecs)})\n- Photos ${t.photo} · videos ${t.video} · typed notes ${t.text}\n- Summaries written: ${t.summaries} of ${t.visits}\n`;
+  const missing = R.facts.filter(f => !f.st.summary).map(f => pad2(f.m.id)); if (missing.length) s += `- Missing summary: visits ${missing.join(', ')}\n`;
+  if (!R.day){
+    s += `\n| # | Date | Supplier | Checked in | Meeting rec | Voice notes | Photos | Summary |\n|---|---|---|---|---|---|---|---|\n`;
+    for (const f of R.facts) s += `| ${pad2(f.m.id)} | ${f.m.dow} ${f.m.date.slice(8)} Oct | ${f.m.name} | ${f.st.checkedIn ? fmtTime(f.st.at) : '—'} | ${f.c.meeting ? fmtHours(f.recSecs) : '—'} | ${f.c.memo || '—'} | ${f.c.photo || '—'} | ${(f.st.summary || '').split('\n')[0].replace(/\|/g,'/') || '—'} |\n`;
+  }
+  for (const tag of ['Follow-up','Question']) if (topics[tag]) {
+    s += `\n## ${tag === 'Follow-up' ? 'Follow-ups' : 'Open questions'}\n\n` + topics[tag].map(it => `- [ ] **${pad2(it.m.id)} ${it.m.name}:** ${it.text}${it.by ? ` (${it.by})` : ''}`).join('\n') + '\n';
+  }
+  s += `\n## By topic\n`;
+  let any = false;
+  for (const tag of TOPIC_ORDER) if (topics[tag] && !['Follow-up','Question'].includes(tag)) { any = true;
+    s += `\n### ${tag}\n` + topics[tag].map(it => `- **${pad2(it.m.id)} ${it.m.name}:** ${it.text}`).join('\n') + '\n'; }
+  if (!any) s += `\nNothing tagged yet.\n`;
+  let curDay = null;
+  s += `\n## Visits\n`;
+  for (const f of R.facts){
+    if (!R.day && f.m.day !== curDay){ curDay = f.m.day; s += `\n### ${DAYLABEL[curDay]}\n`; }
+    s += `\n#### ${pad2(f.m.id)} · ${f.m.name} · ${f.m.time}\n${f.m.detail}${f.m.contact ? ` · ${f.m.contact} ${f.m.phone}` : ''}\n\n`;
+    s += f.st.checkedIn ? `Checked in ${fmtTime(f.st.at)}${f.st.by ? ` by ${f.st.by}` : ''}${f.st.lat ? ` · GPS ${f.st.lat.toFixed(5)}, ${f.st.lng.toFixed(5)}` : ''}\n` : `Not checked in\n`;
+    s += `Captured: ${plural(f.c.meeting,'meeting recording')} (${fmtHours(f.recSecs)}${f.transcripts ? `, ${f.transcripts} with transcript` : ''}) · ${plural(f.c.memo,'voice note')} · ${plural(f.c.photo,'photo')} · ${plural(f.c.video,'video')} · ${plural(f.c.text,'note')}\n`;
+    s += `\n**Summary:** ${f.st.summary ? f.st.summary.trim() : '_not written_'}\n`;
+    if (f.items.length){ s += `\n**Key points**\n` + f.items.sort((a,b) => a.at - b.at).map(it => `- [${it.tag}] ${it.text}`).join('\n') + '\n'; }
+    if (f.memos.length){ s += `\n**Voice notes (to summarise)**\n` + f.memos.map(v => `- ${fmtTime(v.at)} · ${fmtDur(v.dur)}${v.by ? ` · ${v.by}` : ''}${v.text ? ` — ${v.text}` : ''}${v.transcript ? `\n  > ${v.transcript.replace(/\n/g,' ')}` : ''}`).join('\n') + '\n'; }
+    if (f.other.length){ s += `\n**Other notes**\n` + f.other.map(o => `- ${o.text}`).join('\n') + '\n'; }
+  }
+  return {md: s, file: R.file, title: R.title};
+}
+
+/* On-screen version */
+function renderReport(scope){
+  const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
+  setTop(R.day ? `Day ${R.day} report` : 'Trip report', true);
+  const li = it => `<li><a href="#m${it.m.id}" class="rv">${pad2(it.m.id)} ${esc(it.m.name)}</a> ${esc(it.text)}${it.by ? ` <span class="rby">${esc(it.by)}</span>` : ''}</li>`;
+  let h = `<section class="repcard glass" style="display:flex;flex-direction:column;gap:10px"><div class="eyebrow">${R.day ? 'Day report' : 'Whole trip'} · ${esc(user || '')}'s phone</div><h2>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill tour')}</h2>
+    <div class="stats">
+      <div><b>${t.checked}/${t.visits}</b><span>checked in</span></div>
+      <div class="sm"><b>${t.meeting}</b><span>meeting recordings · ${fmtHours(t.recSecs)}</span></div>
+      <div class="sv"><b>${t.memo}</b><span>voice notes · ${fmtHours(t.memoSecs)}</span></div>
+      <div><b>${t.summaries}/${t.visits}</b><span>summaries</span></div>
+    </div>
+    <div style="font-size:13px;color:var(--ink2);font-weight:600">${plural(t.photo,'photo')} · ${plural(t.video,'video')} · ${plural(t.text,'typed note')}</div>
+    <div class="rowbtns"><button class="btn ghost small" data-a="repcopy" data-s="${scope}">Copy</button><button class="btn primary small" data-a="repshare" data-s="${scope}">Share report</button></div></section>`;
+  const missing = R.facts.filter(f => !f.st.summary);
+  if (missing.length) h += `<div class="banner"><span>Missing summary: ${missing.map(f => `<a href="#m${f.m.id}" class="rv">${pad2(f.m.id)}</a>`).join(' ')}</span></div>`;
+  for (const tag of ['Follow-up','Question']) if (topics[tag]) h += `<section class="card"><h3 class="rh3">${tag === 'Follow-up' ? 'Follow-ups' : 'Open questions'}</h3><ul class="rl">${topics[tag].map(li).join('')}</ul></section>`;
+  const tp = TOPIC_ORDER.filter(tg => topics[tg] && !['Follow-up','Question'].includes(tg));
+  if (tp.length) h += `<section class="card"><h3 class="rh3">By topic</h3>${tp.map(tg => `<div class="rtag">${esc(tg)}</div><ul class="rl">${topics[tg].map(li).join('')}</ul>`).join('')}</section>`;
+  let curDay = null;
+  for (const f of R.facts){
+    if (!R.day && f.m.day !== curDay){ curDay = f.m.day; h += `<div class="section-h"><h3>${DAYLABEL[curDay]} · <a href="#day${curDay}" class="rv">day report</a></h3></div>`; }
+    h += `<section class="card rvisit"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a>
+      <div class="rmeta">${f.st.checkedIn ? `<span class="chip ok">✓ ${fmtTime(f.st.at)}</span>` : '<span class="chip">Not checked in</span>'}
+        <span>${f.c.meeting ? `${plural(f.c.meeting,'meeting recording')} · ${fmtHours(f.recSecs)}` : 'no meeting recording'}${f.c.memo ? ` · ${plural(f.c.memo,'voice note')}` : ''} · ${plural(f.c.photo,'photo')}${f.c.video ? ` · ${plural(f.c.video,'video')}` : ''}${f.c.text ? ` · ${plural(f.c.text,'note')}` : ''}</span></div>
+      <p class="rsum">${f.st.summary ? esc(f.st.summary) : '<i>No summary yet</i>'}</p>
+      ${f.items.length ? `<ul class="rl">${f.items.sort((a,b) => a.at - b.at).map(it => `<li><span class="rtg">${esc(it.tag)}</span> ${esc(it.text)}</li>`).join('')}</ul>` : ''}
+      ${f.memos.length ? `<ul class="rl">${f.memos.map(v => `<li><span class="rtg memo">Voice note</span> ${fmtTime(v.at)} · ${fmtDur(v.dur)}${v.text ? ` — ${esc(v.text)}` : ''}</li>`).join('')}</ul>` : ''}
+      ${f.other.length ? `<ul class="rl rother">${f.other.map(o => `<li>${esc(o.text)}</li>`).join('')}</ul>` : ''}</section>`;
+  }
+  $('#view').innerHTML = h;
+}
+function shareReport(scope){ const r = reportMarkdown(scope); return shareFiles([new File([r.md], r.file, {type:'text/markdown'})], r.title); }
+async function copyReport(scope){ const r = reportMarkdown(scope); try { await navigator.clipboard.writeText(r.md); toast('Report copied'); } catch(e){ await shareReport(scope); } }
+
+/* ---------- export / share ---------- */
+function ext(n){ if (n.type === 'audio') return (n.blob.type.includes('mp4') || n.blob.type.includes('aac')) ? 'm4a' : n.blob.type.includes('ogg') ? 'ogg' : 'webm';
+  if (n.name && n.name.includes('.')) return n.name.split('.').pop(); return n.type === 'photo' ? 'jpg' : n.type === 'video' ? 'mp4' : 'bin'; }
+function fileFor(n){ const m = MEETINGS.find(x => x.id === n.meetingId) || {name:'Unfiled'};
+  const stamp = cn(n.createdAt).stamp; // China time, same as shown in the app
+  const t = n.type === 'audio' ? AKIND[akind(n)].file : n.type;
+  const name = `V${String(n.meetingId).padStart(2,'0')}_${m.name.replace(/[^A-Za-z0-9]+/g,'')}_${t}_${stamp}_${n.by||''}_n${n.id}.${ext(n)}`;
+  return new File([n.blob], name, {type: n.blob.type || 'application/octet-stream'}); }
+function meetingText(id){
+  const m = MEETINGS.find(x => x.id === id); const st = meetingState[id] || {};
+  const notes = (noteCache[id] || []).slice().sort((a,b) => a.createdAt - b.createdAt);
+  let s = `# Visit ${String(id).padStart(2,'0')} · ${m.name}\n${m.dow} ${m.date} ${m.time} · ${m.detail}${m.contact ? ` · ${m.contact} ${m.phone}` : ''}\n`;
+  s += st.checkedIn ? `Checked in: ${fmtDateTime(st.at)}${st.lat ? ` · GPS ${st.lat.toFixed(5)}, ${st.lng.toFixed(5)} (±${Math.round(st.acc||0)} m)` : ''} · by ${st.by||''}\n` : `Not checked in\n`;
+  if (st.summary) s += `\n## Summary\n${st.summary}\n`;
+  s += `\n## Notes (${notes.length})\n`;
+  for (const n of notes){
+    s += `\n### ${fmtTime(n.createdAt)} · ${n.type === 'audio' ? AKIND[akind(n)].label + ' (' + AKIND[akind(n)].note + ')' : n.type}${n.by ? ` · ${n.by}` : ''}${n.tags && n.tags.length ? ` · [${n.tags.join(', ')}]` : ''}\n`;
+    if (n.blob) s += `File: ${fileFor(n).name}${n.type === 'audio' ? ` · ${fmtDur(n.duration||0)}` : ''}\n`;
+    if (n.marks && n.marks.length) s += `Marks: ${n.marks.map(x => `${fmtDur(x.t)} ${x.tag}`).join(' · ')}\n`;
+    if (n.text) s += `${n.text}\n`;
+    if (n.transcript) s += `Transcript:\n${n.transcript}\n`;
+  }
+  return s;
+}
+async function shareFiles(files, title){
+  if (navigator.share && navigator.canShare && navigator.canShare({files})){
+    try { await navigator.share({files, title}); return true; } catch(e){ if (e.name === 'AbortError') return false; toast('Share failed: ' + e.message, 3500); return false; }
+  }
+  // fallback (desktop browsers): download each file
+  if (!/iPhone|iPad/.test(navigator.userAgent)){
+    files.forEach(f => { const u = URL.createObjectURL(f); const a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 60000); });
+    return true;
+  }
+  toast('Sharing not available here. Open Mill Notes from the Home Screen icon.', 4500); return false;
+}
+// Read from the in-memory cache, not IndexedDB: an await before navigator.share can cost the tap's permission on iOS.
+function shareNote(nid){ const n = Object.values(noteCache).flat().find(x => x.id === nid); if (!n || !n.blob) return; const f = fileFor(n); return shareFiles([f], f.name); }
+async function exportMeeting(id){
+  const m = MEETINGS.find(x => x.id === id); const notes = (noteCache[id] || []);
+  const files = notes.filter(n => n.blob).map(fileFor);
+  files.unshift(new File([meetingText(id)], `V${String(id).padStart(2,'0')}_${m.name.replace(/[^A-Za-z0-9]+/g,'')}_notes.md`, {type:'text/markdown'}));
+  const total = files.reduce((s,f) => s + f.size, 0);
+  if (files.length > 1 && total > 400e6) toast('Large export: share videos one by one if this fails', 4000);
+  await shareFiles(files, `Visit ${id} · ${m.name}`);
+}
+async function exportText(){
+  const s = MEETINGS.map(m => meetingText(m.id)).join('\n\n---\n\n');
+  try { await navigator.clipboard.writeText(s); toast('Copied all notes'); } catch(e){ await shareFiles([new File([s], 'mill-notes.md', {type:'text/markdown'})], 'Mill Notes'); }
+}
+async function exportJson(){
+  const all = Object.values(noteCache).flat().map(n => ({...n, blob: undefined, file: n.blob ? fileFor(n).name : null}));
+  const data = JSON.stringify({exportedAt: new Date().toISOString(), user, meetings: meetingState, notes: all}, null, 1);
+  await shareFiles([new File([data], 'mill-notes.json', {type:'application/json'})], 'Mill Notes JSON');
+}
+
+/* ---------- recording ---------- */
+let rec = null;          // the live recording: {mr, stream, recId, start, marks, meetingId, by, mime, bytes, pending, ctx, timer, raf, lock}
+let starting = false;    // blocks a double tap on Record while the mic is being opened
+const finalized = new Set(); // recIds already saved (or being saved): stops double saves
+function pickMime(){ for (const t of ['audio/mp4','audio/mp4;codecs=mp4a.40.2','audio/webm;codecs=opus','audio/webm','audio/ogg']) { try { if (MediaRecorder.isTypeSupported(t)) return t; } catch(e){} } return ''; }
+function saveRecInfo(r){ try { localStorage.setItem('mn.rec', JSON.stringify({recId:r.recId, meetingId:r.meetingId, start:r.start, by:r.by, mime:r.mime, marks:r.marks, kind:r.kind})); } catch(e){} }
+function clearRecInfo(recId){ try { const i = JSON.parse(localStorage.getItem('mn.rec') || 'null'); if (!i || i.recId === recId) localStorage.removeItem('mn.rec'); } catch(e){} }
+async function startRecording(mid, kind = 'meeting'){
+  if (rec || starting) return;
+  if (!navigator.mediaDevices || !window.MediaRecorder){ toast('Recording needs Safari 14.5+ (open from Home Screen)', 4000); return; }
+  starting = true;
+  // Create the audio context inside the tap so iOS lets it run (it drives the level meter).
+  let ctx = null; try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){}
+  try {
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:true}}); }
+    catch(e){ try { ctx && ctx.close(); } catch(_){} toast('Microphone blocked. Settings › Apps › Safari › Microphone › Allow', 5000); return; }
+    const mime = pickMime(); const mr = new MediaRecorder(stream, mime ? {mimeType: mime, audioBitsPerSecond: 64000} : undefined);
+    const recId = Date.now(); const m = MEETINGS.find(x => x.id === mid);
+    const self = rec = {mr, stream, recId, start: recId, marks:[], meetingId: mid, by: user, bytes:0, mime: mr.mimeType || mime, pending: Promise.resolve(), ctx, kind};
+    saveRecInfo(self);
+    mr.ondataavailable = (ev) => {
+      if (!ev.data || !ev.data.size) return;
+      self.bytes += ev.data.size; const seq = Date.now();
+      // Each 4 s chunk is stored on its own, with its visit, so a crash loses at most one chunk.
+      self.pending = self.pending.then(() => add('parts', {rec: recId, seq, blob: ev.data, mid, by: self.by, mime: self.mime, kind}))
+        .catch(() => { if (!self.warned){ self.warned = true; toast('Storage error: the recording is not being saved. Stop and free up space.', 7000); } });
+      const s = $('#rec-size'); if (s) s.textContent = fmtBytes(self.bytes);
+    };
+    mr.onstop = () => { self.stopAt = self.stopAt || Date.now(); finalizeRecording(self.recId, self.meetingId, self.start, self.marks, self.mime, false, self.by, self.stopAt, self); };
+    mr.start(4000);
+    // UI
+    $('#rec').classList.toggle('memo', kind === 'memo');
+    $('#rec-mode').innerHTML = `${ICON[AKIND[kind].icon].replace('<svg','<svg width="15" height="15" fill="#fff"')} ${AKIND[kind].label}`;
+    $('#rec-title').textContent = `${String(mid).padStart(2,'0')} · ${m.name}`;
+    $('#rec-by').textContent = kind === 'memo' ? `${user || ''} · speak your memo, tap stop when done` : `${user || ''} · tap a tag when it matters`;
+    $('#rec-marks').innerHTML = ''; $('#rec-timer').textContent = '00:00'; $('#rec-size').textContent = ''; $('#rec').hidden = false;
+    self.timer = setInterval(() => { $('#rec-timer').textContent = fmtDur((Date.now() - self.start)/1000); }, 500);
+    meter(self);
+    await lockScreen(self);
+    if (!meetingState[mid]?.checkedIn) checkIn(mid, true);
+  } finally { starting = false; }
+}
+async function lockScreen(r){
+  try { r.lock = await navigator.wakeLock.request('screen'); $('#rec-lockwarn').hidden = true; }
+  catch(e){ r.lock = null; $('#rec-lockwarn').hidden = false; }
+}
+function meter(r){
+  try {
+    const ctx = r.ctx; if (!ctx) return; if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const src = ctx.createMediaStreamSource(r.stream); const an = ctx.createAnalyser(); an.fftSize = 256; src.connect(an);
+    const data = new Uint8Array(an.frequencyBinCount); const c = $('#rec-meter'), g = c.getContext('2d'); const hist = new Array(120).fill(0);
+    const draw = () => { if (rec !== r) return; an.getByteTimeDomainData(data); let peak = 0; for (const v of data) peak = Math.max(peak, Math.abs(v - 128)); hist.push(peak/128); hist.shift();
+      const orb = $('#rec-orb'); if (orb) orb.style.transform = `scale(${(1 + Math.min(.45, hist[hist.length-1] * 1.4)).toFixed(3)}) rotateX(${(hist[hist.length-1]*25).toFixed(1)}deg)`;
+      g.clearRect(0,0,c.width,c.height); const w = c.width / hist.length; hist.forEach((v,i) => { const h = Math.max(3, v * c.height); g.fillStyle = v > .85 ? '#FFE3A3' : 'rgba(255,255,255,.85)'; g.fillRect(i*w, (c.height-h)/2, w-1.5, h); });
+      r.raf = requestAnimationFrame(draw); };
+    draw();
+  } catch(e){}
+}
+function addMark(tag){ if (!rec) return; const t = (Date.now() - rec.start)/1000; rec.marks.push({t, tag}); saveRecInfo(rec); const d = document.createElement('div'); d.innerHTML = `<b>${fmtDur(t)}</b> ${esc(tag)}`; $('#rec-marks').prepend(d); if (navigator.vibrate) navigator.vibrate(30); }
+$('#rec-mark').onclick = () => addMark('Mark');
+$('#rec-quick').addEventListener('click', e => { const b = e.target.closest('button'); if (b) addMark(b.dataset.tag); });
+$('#rec-stop').onclick = () => stopRecording();
+function stopRecording(){
+  if (!rec) return; const r = rec; r.stopAt = Date.now();
+  const fin = () => finalizeRecording(r.recId, r.meetingId, r.start, r.marks, r.mime, false, r.by, r.stopAt, r);
+  try { if (r.mr.state !== 'inactive') { r.mr.stop(); setTimeout(fin, 4000); } else fin(); } // onstop normally saves; the timer is a backstop
+  catch(e){ fin(); }
+}
+function teardown(r){
+  clearInterval(r.timer); cancelAnimationFrame(r.raf);
+  try { r.stream.getTracks().forEach(t => t.stop()); } catch(e){}
+  try { r.ctx && r.ctx.close(); } catch(e){}
+  try { r.lock && r.lock.release(); } catch(e){}
+  if (rec === r) rec = null;
+}
+async function finalizeRecording(recId, mid, start, marks, mime, recovered, by, stopAt, live, kind){
+  if (finalized.has(recId)) return; finalized.add(recId);
+  if (live) teardown(live);
+  $('#rec').hidden = true;
+  try {
+    if (live) { try { await live.pending; } catch(e){} }
+    const parts = (await getAll('parts', 'rec', recId)).sort((a,b) => a.seq - b.seq);
+    if (!parts.length){ clearRecInfo(recId); if (!recovered) toast('Nothing recorded'); return; }
+    const blob = new Blob(parts.map(p => p.blob), {type: mime || parts[0].mime || parts[0].blob.type});
+    const duration = Math.max(1, ((stopAt || parts[parts.length-1].seq) - start)/1000);
+    const k = (live && live.kind) || kind || parts[0].kind || 'meeting';
+    const note = {meetingId: mid, type:'audio', kind: k, blob, createdAt: start, by: by || user, duration, marks: marks || [], tags:[], recovered: !!recovered};
+    // One transaction: the note is written and its chunks removed together, or neither happens.
+    await idb().then(d => new Promise((res, rej) => {
+      const t = d.transaction(['notes','parts'], 'readwrite');
+      t.objectStore('notes').add(note); const ps = t.objectStore('parts'); parts.forEach(p => ps.delete(p.id));
+      t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    }));
+    clearRecInfo(recId);
+    toast(recovered ? `Recovered a ${fmtDur(duration)} ${AKIND[k].short}` : `Saved ${fmtDur(duration)} ${AKIND[k].short}`, 3000);
+    if (!editing()) render();
+  } catch(e){
+    finalized.delete(recId); // the chunks are still stored; the next launch retries
+    toast('Could not save the recording yet (' + ((e && e.message) || e) + '). It is kept and will be saved on next launch.', 7000);
+  }
+}
+async function recoverIfNeeded(){
+  let info = null; try { info = JSON.parse(localStorage.getItem('mn.rec') || 'null'); } catch(e){}
+  const all = await getAll('parts');
+  const ids = [...new Set(all.map(p => p.rec))];
+  if (info && !ids.includes(info.recId)) clearRecInfo(info.recId);
+  for (const id of ids){
+    if (rec && rec.recId === id) continue;
+    const p0 = all.find(p => p.rec === id);
+    const i = info && info.recId === id ? info : {meetingId: p0.mid, start: id, by: p0.by, mime: p0.mime, marks: [], kind: p0.kind};
+    const mid = i.meetingId ?? p0.mid ?? currentMeeting().m.id;
+    await finalizeRecording(id, mid, i.start, i.marks || [], i.mime, true, i.by, undefined, null, i.kind || p0.kind);
+  }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!rec) return;
+  const r = rec;
+  if (document.visibilityState === 'hidden'){ try { if (r.mr.state === 'recording') r.mr.requestData(); } catch(e){} return; } // flush the last seconds
+  if (r.mr.state === 'inactive'){
+    toast('Recording stopped when the screen locked or you left the app. What was recorded is saved.', 5000);
+    setTimeout(() => finalizeRecording(r.recId, r.meetingId, r.start, r.marks, r.mime, false, r.by, r.stopAt, r), 1500); // after onstop's last chunk
+  } else lockScreen(r); // iOS drops the wake lock whenever the page is hidden
+});
+window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
+
+/* ---------- boot ---------- */
+const APP_VERSION = '2.0';
+function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
+window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch(e){}
+(async () => {
+  try { await recoverIfNeeded(); } catch(e){ toast('Could not recover an earlier recording: ' + ((e && e.message) || e), 6000); }
+  if (!user) $('#overlay').hidden = false;
+  try { await render(); } catch(e){ $('#view').innerHTML = `<div class="card"><h2>Something went wrong</h2><p>${esc(e && e.message)}</p><p>Your notes are still stored. Close and reopen the app.</p></div>`; }
+})();
+</script>
+</body>
+</html>
