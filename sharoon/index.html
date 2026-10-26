@@ -318,6 +318,25 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .repcard{border-radius:28px;padding:18px} .repcard h2{margin:0}
 .stats span em{display:block;font-style:normal;font-weight:700;color:var(--ink2)}
 
+/* sync + Claude results */
+.syncchip{display:inline-flex;align-items:center;gap:3px;height:32px;min-width:32px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:800;color:var(--ink2);background:var(--glass-hi);border:1px solid var(--stroke)}
+.syncchip svg{width:18px;height:18px;fill:currentColor}
+.syncchip.ok{color:#0F6B47} .syncchip.ok svg{fill:#25B07A}
+.syncchip.busy svg{animation:blink 1.2s infinite;fill:#C2452A} .syncchip.busy{color:#C2452A}
+.syncchip.err{color:#B3261E;background:rgba(240,69,58,.12)} .syncchip.off{opacity:.7}
+.keyin{width:100%;min-height:48px;border-radius:14px;border:1px solid var(--hair);background:#fff;padding:0 14px;font-size:16px;font-family:var(--font)}
+.aiwait{font-size:14px;color:var(--ink2);background:var(--glass-hi);border:1px dashed var(--hair);border-radius:14px;padding:10px 12px}
+.ai{border-radius:16px;background:#FFFBF7;border:1px solid var(--hair);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.aitabs{display:flex;align-items:center;gap:6px}
+.aitabs button{min-height:36px;padding:0 10px;border-radius:999px;font-size:14px;font-weight:800;color:var(--ink2);background:transparent;white-space:nowrap;flex:none}
+.aitabs button.on{background:var(--ink);color:#fff}
+.aibadge{margin-left:auto;font-size:12px;font-weight:800;color:#8A5200;white-space:nowrap}
+.aipane{font-size:15px;line-height:1.45;max-height:420px;overflow:auto}
+.aihead{font-weight:800;margin:0 0 4px;color:var(--ink)}
+.seg{margin:0 0 6px} .segt{font-size:12px;font-weight:800;color:#C2452A;background:rgba(194,69,42,.1);border-radius:8px;padding:2px 6px;margin-right:4px}
+.zh{color:var(--ink2);font-size:14px}
+.brief{border:2px solid rgba(255,178,31,.6);background:linear-gradient(180deg,#FFFBF2,#FFF5E6)}
+.note-card.remote{background:rgba(255,255,255,.66);border-style:dashed}
 @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
 </style>
 </head>
@@ -328,6 +347,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
   <img class="logo" src="icon-180.png" alt="" width="26" height="26">
   <h1 id="title">Butterfly Notes</h1>
   <span class="net" id="net" title="Connection"></span>
+  <button class="syncchip off" id="sync" aria-label="Sync off"><svg viewBox="0 0 24 24"><path d="M7 19a5 5 0 0 1-.6-9.96A6.5 6.5 0 0 1 19 10.5 4.25 4.25 0 0 1 18.25 19z"/></svg><span></span></button>
   <button class="who" id="who">—</button>
 </header>
 
@@ -422,14 +442,17 @@ let dbp = null;
 function idb(){
   if (dbp) return dbp;
   dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('millnotes', 1);
-    r.onupgradeneeded = () => {
+    const r = indexedDB.open('millnotes', 2);
+    r.onupgradeneeded = (e) => {
       const d = r.result;
-      d.createObjectStore('meetings', {keyPath:'id'});
-      const n = d.createObjectStore('notes', {keyPath:'id', autoIncrement:true});
-      n.createIndex('meetingId','meetingId');
-      const p = d.createObjectStore('parts', {keyPath:'id', autoIncrement:true});
-      p.createIndex('rec','rec');
+      if (e.oldVersion < 1){
+        d.createObjectStore('meetings', {keyPath:'id'});
+        const n = d.createObjectStore('notes', {keyPath:'id', autoIncrement:true});
+        n.createIndex('meetingId','meetingId');
+        const p = d.createObjectStore('parts', {keyPath:'id', autoIncrement:true});
+        p.createIndex('rec','rec');
+      }
+      if (e.oldVersion < 2){ d.createObjectStore('results', {keyPath:'path'}); d.createObjectStore('remote', {keyPath:'device'}); }
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -445,8 +468,9 @@ function tx(store, mode, fn){
   }));
 }
 const getAll = (store, index, key) => tx(store, 'readonly', s => index ? s.index(index).getAll(key) : s.getAll());
-const put = (store, v) => tx(store, 'readwrite', s => s.put(v));
-const add = (store, v) => tx(store, 'readwrite', s => s.add(v));
+const nudge = store => { if ((store === 'notes' || store === 'meetings') && typeof sync !== 'undefined' && !sync.running) scheduleSync(); };
+const put = (store, v) => tx(store, 'readwrite', s => s.put(v)).then(r => (nudge(store), r));
+const add = (store, v) => tx(store, 'readwrite', s => s.add(v)).then(r => (nudge(store), r));
 const del = (store, k) => tx(store, 'readwrite', s => s.delete(k));
 const get = (store, k) => tx(store, 'readonly', s => s.get(k));
 
@@ -493,6 +517,7 @@ function currentMeeting(){
 async function loadState(){
   const rows = await getAll('meetings'); meetingState = {}; rows.forEach(r => meetingState[r.id] = r);
   const notes = await getAll('notes'); noteCache = {}; notes.forEach(n => (noteCache[n.meetingId] ||= []).push(n));
+  try { await loadSynced(); remoteNotes.forEach(n => (noteCache[n.meetingId] ||= []).push(n)); } catch(e){}
 }
 
 /* ---------- router ---------- */
@@ -526,6 +551,7 @@ const navStack = [location.hash]; let goingBack = false;
 window.addEventListener('hashchange', () => { if (goingBack){ goingBack = false; navStack.pop(); } else navStack.push(location.hash); });
 $('#back').onclick = () => { if (navStack.length > 1){ goingBack = true; history.back(); } else location.hash = ''; };
 $('#who').onclick = () => { location.hash = '#settings'; };
+$('#sync').onclick = () => { if (syncCfg()) syncNow(true); else location.hash = '#settings'; };
 
 /* ---------- views ---------- */
 function actionsHtml(id, memoId = id){
@@ -613,10 +639,12 @@ function renderMeeting(id){
     <h2>${esc(m.name)}</h2>
     <div class="meta">${esc(m.detail)}${m.contact ? `<br><b>${esc(m.contact)}</b> <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
     ${checkinHtml(m)}</section>
+    ${briefHtml(visitBrief(id), 'Visit brief')}
     ${actionsHtml(id)}
     <div id="composer-slot"></div>
     <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span class="chip" id="sum-state" style="font-size:11px" ${st.summary ? '' : 'hidden'}>saved</span></div>
-      <textarea class="note" id="summary" placeholder="Two lines after the visit: what they offer, price indication, next step…">${esc(st.summary || '')}</textarea></section>
+      <textarea class="note" id="summary" placeholder="Two lines after the visit: what they offer, price indication, next step…">${esc(st.summary || '')}</textarea>
+      ${otherSummaries(id)}</section>
     <div class="section-h"><h3>Notes (${notes.length})</h3><span style="display:flex;gap:8px"><button class="btn ghost small" data-a="import" data-m="${id}">Import</button><button class="btn ghost small" data-a="export" data-m="${id}">Export visit</button></span></div>`;
   if (!notes.length) html += `<div class="empty">Nothing yet. Tap <b>Record meeting</b> as the meeting starts, or <b>Voice note</b> for your own memo.</div>`;
   html += notes.map(noteHtml).join('');
@@ -633,7 +661,32 @@ async function patchMeeting(id, fields){
   const cur = (await get('meetings', id)) || {id};
   Object.assign(cur, fields); await put('meetings', cur); meetingState[id] = cur; return cur;
 }
+function otherSummaries(id){
+  return remoteMeetings().filter(x => x.id === id && x.summary).map(x => `<div class="kindnote">${esc(x.owner)}'s summary</div><p style="white-space:pre-wrap">${esc(x.summary)}</p>`).join('');
+}
+let _remoteMeetings = [];
+const remoteMeetings = () => _remoteMeetings;
+function remoteNoteHtml(n){
+  const ak = n.type === 'audio' ? akind(n) : null, k = ak ? AKIND[ak].icon : {photo:'cam', video:'vid', text:'txt'}[n.type];
+  const kindHtml = ak ? `<span class="kindbadge ${ak}">${ICON[AKIND[ak].icon]}${ak === 'memo' ? 'Voice note' : 'Meeting'}</span>` : `<span class="kindbadge ${n.type}">${ICON[k]}${{text:'Note', photo:'Photo', video:'Video'}[n.type]}</span>`;
+  let body = n.type === 'text' ? `<p>${esc(n.text || '')}</p>` : n.text ? `<p class="capline" style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>` : '';
+  if (n.type === 'photo' && n.media) body = `<button class="btn ghost small" data-remote-photo="${esc(n.media.path)}" data-parts="${n.media.parts || 1}">Show ${esc(n.owner || 'their')}'s photo</button>` + body;
+  if (ak) body = `<div class="kindnote">Recorded on ${esc(n.owner || 'the other')}'s phone${n.media && !n.media.uploaded ? ' · still uploading' : ''}</div>` + resultHtml(n) + body;
+  const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
+  return `<article class="note-card remote${ak ? ' k-' + ak : ''}" data-id="${esc(n.uid)}">
+    <div class="hd">${kindHtml}<span>${fmtTime(n.createdAt)}${ak ? ' · ' + fmtHours(n.duration || 0) : ''}</span><span class="sp"></span><span class="by">${esc(n.by || n.owner || '')}</span></div>${tags}${body}</article>`;
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-remote-photo]'); if (!b) return;
+  b.textContent = 'Loading…'; b.disabled = true;
+  try {
+    const path = b.dataset.remotePhoto, parts = Number(b.dataset.parts) || 1;
+    const blobs = []; for (let i = 0; i < parts; i++) blobs.push(await (await ghRaw(parts === 1 ? path : `${path}.p${String(i + 1).padStart(3, '0')}`)).blob());
+    const u = URL.createObjectURL(new Blob(blobs)); urls.push(u); const img = document.createElement('img'); img.src = u; img.alt = ''; b.replaceWith(img);
+  } catch(err){ b.textContent = 'Couldn\'t load: no connection?'; b.disabled = false; }
+});
 function noteHtml(n){
+  if (n.remote) return remoteNoteHtml(n);
   const ak = n.type === 'audio' ? akind(n) : null;
   const k = ak ? AKIND[ak].icon : {photo:'cam', video:'vid', text:'txt'}[n.type];
   let body = '';
@@ -645,8 +698,9 @@ function noteHtml(n){
   if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" preload="metadata" data-dur="${n.duration || 0}"></audio>
     <div class="player"><button class="pp" data-play aria-label="Play">${ICON.play}</button><input type="range" min="0" max="${Math.max(1, Math.round(n.duration || 0))}" step="1" value="0" aria-label="Position"><span class="tm">${fmtAt(0, n.duration || 0)} / ${fmtAt(n.duration || 0, n.duration || 0)}</span></div>`
     + (n.marks && n.marks.length ? `<div class="marks${n.marks.length > 12 ? ' collapsed' : ''}">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtAt(x.t, n.duration)}</b> ${esc(x.tag === 'Mark' ? 'Marked' : x.tag)}</button>`).join('')}</div>${n.marks.length > 12 ? `<button class="morebtn" data-more-marks>Show all ${n.marks.length} tags</button>` : ''}` : '')
-    + `<details><summary>${ak === 'memo' ? 'Transcript' : 'Chinese transcript / translation'}${n.transcript ? ' ✓' : ''}</summary>
-       <textarea class="transcript" data-tr="${n.id}" placeholder="${ak === 'memo' ? 'Optional: paste a transcript of your voice note.' : 'Paste the Mill Transcribe result here, or leave it for after the trip.'}">${esc(n.transcript || '')}</textarea></details>`; }
+    + resultHtml(n)
+    + (syncCfg() && !n.transcript ? '' : `<details><summary>${n.transcript ? 'Your pasted transcript ✓' : 'Paste a transcript yourself'}</summary>
+       <textarea class="transcript" data-tr="${n.id}" placeholder="Optional. Claude does this for you once sync is on.">${esc(n.transcript || '')}</textarea></details>`); }
   if (n.type !== 'text' && n.text) body += `<p class="capline" style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>`;
   const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
   const extra = n.type === 'audio' ? ` · ${fmtHours(n.duration || 0)}${n.recovered ? ' · recovered' : ''}` : n.blob ? ` · ${fmtBytes(n.blob.size)}` : '';
@@ -662,7 +716,17 @@ async function renderSettings(){
   setTop('Settings', true);
   let est = null; try { est = await navigator.storage.estimate(); } catch(e){}
   const all = Object.values(noteCache).flat(); const bytes = all.reduce((s,n) => s + (n.blob ? n.blob.size : 0), 0);
+  const sc = syncCfg(), mine = Object.values(noteCache).flat().filter(n => !n.remote && n.blob), waiting = mine.filter(n => !n.synced).length;
   $('#view').innerHTML = `
+    <section class="card" id="synccard"><h2>✦ Sync with Claude</h2>
+      ${sc ? `<div class="kv"><span>Status</span><b id="sync-txt">…</b></div>
+        <div class="kv"><span>Waiting to upload</span><b>${plural(waiting, 'file')}</b></div>
+        <p>Recordings, photos and notes upload by themselves when you have signal. Claude transcribes, translates and summarises them about every hour. The results appear on each recording, on the visit page and in the day report. ${user === 'Sharoon' ? 'Naveed' : 'Sharoon'}'s notes show up here too.</p>
+        <div class="rowbtns"><button class="btn ghost small" data-a="syncoff">Disconnect</button><button class="btn primary small" data-a="syncnow">Sync now</button></div>`
+      : `<p>Turn this on once and Claude will transcribe, translate and summarise every meeting for you, right here in the app.</p>
+        <input id="synckey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the key (github_pat_…)" aria-label="Sync key" class="keyin">
+        <button class="btn primary" data-a="syncconnect">Connect</button>`}
+    </section>
     <section class="card"><h2>Who's recording</h2><div class="pick"><button data-u="Sharoon" class="${user==='Sharoon'?'on':''}">Sharoon</button><button data-u="Naveed" class="${user==='Naveed'?'on':''}">Naveed</button></div></section>
     <section class="card"><h2>Storage on this phone</h2>
       <div class="kv"><span>Notes</span><b>${all.length}</b></div>
@@ -675,9 +739,9 @@ async function renderSettings(){
       <button class="btn ghost" data-a="exportjson">Share notes as JSON</button>
       <a href="#trip" class="btn ghost" style="text-decoration:none">Trip report ›</a></section>
     <section class="card"><h2>Meeting recordings vs voice notes</h2>
-      <p><b>Meeting recordings</b> (coral) are the supplier conversations: these get Chinese transcription + translation. <b>Voice notes</b> (purple) are your own memos: these get summarised.</p>
-      <p>Open a meeting recording › <b>Share</b> › <b>Mill Transcribe</b> (Shortcuts app: Transcribe Audio → Translate Text). Paste the result into the note's Transcript box. Works offline.</p></section>
+      <p><b>Meeting recordings</b> (coral) are the supplier conversations: Claude transcribes the Chinese, translates it and summarises it. <b>Voice notes</b> (purple) are your own memos: Claude transcribes and summarises them.</p></section>
     <section class="card"><div class="kv"><span>App version</span><b>${APP_VERSION}</b></div><div class="kv"><span>Connection</span><b id="net-txt">${navigator.onLine ? 'online' : 'offline'}</b></div></section>`;
+  syncUI();
 }
 
 /* ---------- actions ---------- */
@@ -699,6 +763,9 @@ document.addEventListener('click', async (e) => {
   if (a === 'export') return exportMeeting(mid);
   if (a === 'exporttext') return exportText();
   if (a === 'exportjson') return exportJson();
+  if (a === 'syncconnect') return connectSync($('#synckey').value);
+  if (a === 'syncnow') return syncNow(true);
+  if (a === 'syncoff'){ try { localStorage.removeItem('mn.sync'); } catch(err){} sync.state = 'off'; syncUI(); toast('Sync turned off. Everything stays on this phone.'); return render(); }
   if (a === 'repshare') return shareReport(b.dataset.s);
   if (a === 'repcopy') return copyReport(b.dataset.s);
 });
@@ -832,7 +899,8 @@ function visitFacts(m){
   for (const n of ns){
     const ak = n.type === 'audio' ? akind(n) : null;
     if (ak === 'meeting'){ recSecs += n.duration || 0; if (n.transcript) transcripts++;
-      meetings.push({at: n.createdAt, dur: n.duration || 0, by: n.by, caption: (n.text || '').trim(), transcript: (n.transcript || '').trim(), marks: (n.marks || []).length});
+      const ai = (resultFor(n) || {}).summary;
+      meetings.push({at: n.createdAt, dur: n.duration || 0, by: n.by, caption: (n.text || '').trim(), transcript: (n.transcript || '').trim(), marks: (n.marks || []).length, ai});
       for (const k of (n.marks || [])) items.push({tag: TAGS.includes(k.tag) ? k.tag : 'Marked', text: `at ${fmtAt(k.t, n.duration || 0)} in the ${fmtTime(n.createdAt)} meeting recording`, by: n.by, at: n.createdAt + k.t*1000, kind:'mark'}); }
     if (ak === 'memo'){ memoSecs += n.duration || 0; memos.push({at: n.createdAt, dur: n.duration || 0, by: n.by, text: (n.text || '').trim(), transcript: (n.transcript || '').trim()}); }
     const text = (n.text || '').trim();
@@ -865,7 +933,11 @@ function totals(facts){
 /* Markdown, for sharing to Files / AirDrop / Claude */
 function reportMarkdown(scope){
   const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
-  let s = `# ${R.title}\n\nPrepared from ${user || 'this phone'}'s notes on this phone · generated ${fmtDateTime(Date.now())}\n\n`;
+  let s = `# ${R.title}\n\nPrepared from ${user || 'this phone'}'s notes${remoteNotes.length ? ' and the other phone\'s synced notes' : ''} · generated ${fmtDateTime(Date.now())}\n\n`;
+  const mdBrief = (b, h) => !b ? '' : `## ${h} (by Claude)\n\n${b.headline ? `**${b.headline}**\n\n` : ''}${b.offer ? b.offer + '\n\n' : ''}`
+    + [['', b.highlights || b.bullets], ['Prices', b.prices], ['Specs', b.specs], ['Lead times', b.lead_times], ['MOQ', b.moq], ['Samples', b.samples], ['Follow-ups', b.follow_ups], ['Open questions', b.questions], ['Decisions needed', b.decisions_needed]]
+      .filter(r => r[1] && r[1].length).map(([t, v]) => (t ? `**${t}**\n` : '') + v.map(x => `- ${typeof x === 'string' ? x : x.text || x.what}${x && x.owner ? ` (${x.owner})` : ''}`).join('\n')).join('\n\n') + (b.our_take ? `\n\n**Our take:** ${b.our_take}` : '') + '\n\n';
+  if (R.day) s += mdBrief(dayBrief(R.ms[0].date), 'Daily brief');
   s += `## At a glance\n\n- Visits: ${t.checked} of ${t.visits} checked in\n- Meeting recordings (to transcribe + translate): ${t.meeting} (${fmtHours(t.recSecs)})\n- Voice notes (own memos, to summarise): ${t.memo} (${fmtHours(t.memoSecs)})\n- Photos ${t.photo} · videos ${t.video} · typed notes ${t.text}\n- Summaries written: ${t.summaries} of ${t.visits}\n`;
   const missing = R.facts.filter(f => !f.st.summary && new Date(`${f.m.date}T${f.m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now()).map(f => pad2(f.m.id)); if (missing.length) s += `- Missing summary: visits ${missing.join(', ')}\n`;
   if (!R.day){
@@ -888,8 +960,9 @@ function reportMarkdown(scope){
     s += f.st.checkedIn ? `Checked in ${fmtTime(f.st.at)}${f.st.by ? ` by ${f.st.by}` : ''}${f.st.lat ? ` · GPS ${f.st.lat.toFixed(5)}, ${f.st.lng.toFixed(5)}` : ''}\n` : `Not checked in\n`;
     s += `Captured: ${plural(f.c.meeting,'meeting recording')} (${fmtHours(f.recSecs)}${f.transcripts ? `, ${f.transcripts} with transcript` : ''}) · ${plural(f.c.memo,'voice note')} · ${plural(f.c.photo,'photo')} · ${plural(f.c.video,'video')} · ${plural(f.c.text,'note')}\n`;
     s += `\n**Summary:** ${f.st.summary ? f.st.summary.trim() : '_not written_'}\n`;
+    if (visitBrief(f.m.id)) s += '\n' + mdBrief(visitBrief(f.m.id), 'Visit brief').replace(/^## /, '##### ');
     if (f.items.length){ s += `\n**Key points**\n` + f.items.sort((a,b) => a.at - b.at).map(it => `- [${it.tag}] ${it.text}`).join('\n') + '\n'; }
-    if (f.meetings.some(r => r.caption || r.transcript)){ s += `\n**Meeting recordings**\n` + f.meetings.map(r => `- ${fmtTime(r.at)} · ${fmtHours(r.dur)} · ${plural(r.marks,'tag')}${r.caption ? ` — ${r.caption}` : ''}${r.transcript ? `\n\n  Transcript / translation:\n\n  > ${r.transcript.replace(/\n+/g, '\n  > ')}\n` : ''}`).join('\n') + '\n'; }
+    if (f.meetings.some(r => r.caption || r.transcript || r.ai)){ s += `\n**Meeting recordings**\n` + f.meetings.map(r => `- ${fmtTime(r.at)} · ${fmtHours(r.dur)} · ${plural(r.marks,'tag')}${r.by ? ` · ${r.by}` : ''}${r.caption ? ` — ${r.caption}` : ''}${r.ai && r.ai.headline ? `\n  - Claude: ${r.ai.headline}` : ''}${r.ai && r.ai.bullets ? r.ai.bullets.map(b => `\n  - ${b}`).join('') : ''}${r.transcript ? `\n\n  Pasted transcript:\n\n  > ${r.transcript.replace(/\n+/g, '\n  > ')}\n` : ''}`).join('\n') + '\n'; }
     if (f.memos.length){ s += `\n**Voice notes (to summarise)**\n` + f.memos.map(v => `- ${fmtTime(v.at)} · ${fmtHours(v.dur)}${v.by ? ` · ${v.by}` : ''}${v.text ? ` — ${v.text}` : ''}${v.transcript ? `\n  > ${v.transcript.replace(/\n/g,' ')}` : ''}`).join('\n') + '\n'; }
     if (f.other.length){ s += `\n**Other notes**\n` + f.other.map(o => `- ${o.text}`).join('\n') + '\n'; }
   }
@@ -912,6 +985,9 @@ function renderReport(scope){
     <div style="font-size:13px;color:var(--ink2);font-weight:600">${plural(t.photo,'photo')} · ${plural(t.video,'video')} · ${plural(t.text,'typed note')}</div>
     <div class="rowbtns"><button class="btn ghost small" data-a="repcopy" data-s="${scope}">Copy</button><button class="btn ${t.checked + t.audio + t.text + t.photo ? 'primary' : 'ghost'} small" data-a="repshare" data-s="${scope}">Share report</button></div></section>`;
   const started = f => new Date(`${f.m.date}T${f.m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now();
+  h += R.day ? briefHtml(dayBrief(R.ms[0].date), 'Daily brief')
+             : (() => { const ds = [...new Set(MEETINGS.map(m => m.date))].map(d => [d, dayBrief(d)]).filter(x => x[1]);
+                 return ds.length ? `<section class="card brief"><div class="eyebrow">✦ Day by day · by Claude</div><ul class="rl">${ds.map(([d, b]) => `<li><a class="rv" href="#day${MEETINGS.find(m => m.date === d).day}">${MEETINGS.find(m => m.date === d).dow} ${Number(d.slice(8))} Oct</a> ${esc(b.headline || '')}</li>`).join('')}</ul></section>` : ''; })();
   const missing = R.facts.filter(f => !f.st.summary && started(f));
   if (missing.length) h += `<div class="banner"><span>Missing summary: ${missing.map(f => `<a href="#m${f.m.id}" class="rv">${pad2(f.m.id)}</a>`).join(' ')}</span></div>`;
   for (const tag of ['Follow-up','Question']) if (topics[tag]) h += `<section class="card"><h3 class="rh3">${tag === 'Follow-up' ? 'Follow-ups' : 'Open questions'}</h3><ul class="rl">${topics[tag].map(li).join('')}</ul></section>`;
@@ -925,6 +1001,7 @@ function renderReport(scope){
     h += `<section class="card rvisit${f.st.checkedIn ? ' done' : ''}"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a>
       <div class="rmeta">${f.st.checkedIn ? `<span class="chip ok">✓ ${fmtTime(f.st.at)}</span>` : '<span class="chip">Not checked in</span>'}
         ${[f.c.meeting ? `${plural(f.c.meeting,'meeting recording')} · ${fmtHours(f.recSecs)}` : 'no meeting recording', f.c.memo ? plural(f.c.memo,'voice note') : '', plural(f.c.photo,'photo'), f.c.video ? plural(f.c.video,'video') : '', f.c.text ? plural(f.c.text,'note') : ''].filter(Boolean).map(x => `<span style="white-space:nowrap">${x}</span>`).join('<span aria-hidden="true">·</span>')}</div>
+      ${visitBrief(f.m.id) && visitBrief(f.m.id).headline ? `<p class="aihead">✦ ${esc(visitBrief(f.m.id).headline)}</p>` : ''}
       <p class="rsum">${f.st.summary ? esc(f.st.summary) : '<i>No summary yet</i>'}</p>
       ${f.items.length ? `<ul class="rl">${f.items.sort((a,b) => a.at - b.at).map(it => `<li><span class="rtg">${esc(it.tag)}</span> ${esc(it.text)}</li>`).join('')}</ul>` : ''}
       ${f.meetings.filter(r => r.caption || r.transcript).length ? `<ul class="rl">${f.meetings.filter(r => r.caption || r.transcript).map(r => `<li><span class="rtg" style="background:#C2452A;color:#fff">Meeting</span> ${fmtTime(r.at)}${r.caption ? ` — ${esc(r.caption)}` : ''}${r.transcript ? `<div class="rtx">${esc(r.transcript.length > 320 ? r.transcript.slice(0, 320) + '…' : r.transcript)}</div>` : ''}</li>`).join('')}</ul>` : ''}
@@ -957,6 +1034,7 @@ function meetingText(id){
     if (n.marks && n.marks.length) s += `Marks: ${n.marks.map(x => `${fmtDur(x.t)} ${x.tag}`).join(' · ')}\n`;
     if (n.text) s += `${n.text}\n`;
     if (n.transcript) s += `Transcript:\n${n.transcript}\n`;
+    const ai = resultFor(n); if (ai && ai.summary){ s += `Claude summary: ${ai.summary.headline || ''}\n${(ai.summary.bullets || []).map(b => `- ${b}`).join('\n')}\n`; }
   }
   return s;
 }
@@ -972,7 +1050,7 @@ async function shareFiles(files, title){
   toast('Sharing not available here. Open Butterfly Notes from the Home Screen icon.', 4500); return false;
 }
 // Read from the in-memory cache, not IndexedDB: an await before navigator.share can cost the tap's permission on iOS.
-function shareNote(nid){ const n = Object.values(noteCache).flat().find(x => x.id === nid); if (!n || !n.blob) return; const f = fileFor(n); return shareFiles([f], f.name); }
+function shareNote(nid){ const n = Object.values(noteCache).flat().find(x => x.id === nid && !x.remote); if (!n || !n.blob) return; const f = fileFor(n); return shareFiles([f], f.name); }
 async function exportMeeting(id){
   const m = MEETINGS.find(x => x.id === id); const notes = (noteCache[id] || []);
   const files = notes.filter(n => n.blob).map(fileFor);
@@ -1153,8 +1231,197 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pagehide', () => { if (rec) { try { rec.mr.requestData(); } catch(e){} } });
 
+/* ---------- sync with Claude (private GitHub repo) ----------
+   Phone → repo:  inbox/<device>/state.json (notes + visits, no media) and inbox/<device>/media/<uid>.<ext>[.pNNN]
+   Repo → phone:  results/notes/<uid>.json (transcript, translation, summary), results/visits/<id>.json, results/days/<date>.json,
+                  and the other phone's inbox/<device>/state.json (shared view).
+   Recording never depends on this: everything is captured offline first; sync runs whenever there is a connection. */
+const SYNC_REPO = 'sharooncs/butterfly-sync';
+const PART_BYTES = 6 * 1024 * 1024; // keeps each upload small enough for a phone on a weak connection
+const syncCfg = () => { try { return JSON.parse(localStorage.getItem('mn.sync') || 'null'); } catch(e){ return null; } };
+const deviceId = (() => { try { let d = localStorage.getItem('mn.device'); if (!d){ d = Math.random().toString(36).slice(2, 10); localStorage.setItem('mn.device', d); } return d; } catch(e){ return 'nodevice'; } })();
+const uidOf = n => n.uid || `${deviceId}-${n.id}`;
+let results = {};   // path → parsed JSON (results/…)
+let remoteNotes = []; // notes from the other phone(s)
+const sync = {state: 'off', pending: 0, last: null, error: null, running: false, queued: false};
+
+async function gh(path, opts = {}){
+  const cfg = syncCfg(); if (!cfg) throw new Error('Sync not connected');
+  const r = await fetch(`https://api.github.com${path}`, {...opts, cache: 'no-store', headers: {Authorization: `Bearer ${cfg.token}`, 'X-GitHub-Api-Version': '2022-11-28', Accept: 'application/vnd.github+json', ...(opts.headers || {})}});
+  if (!r.ok){ const t = await r.text().catch(() => ''); const e = new Error(`GitHub ${r.status}${t ? ': ' + t.slice(0, 120) : ''}`); e.status = r.status; throw e; }
+  return r;
+}
+const ghJson = (p, o) => gh(p, o).then(r => r.json());
+const ghRaw = (p) => gh(`/repos/${SYNC_REPO}/contents/${encodeURI(p)}`, {headers: {Accept: 'application/vnd.github.raw'}});
+const b64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] || ''); fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob); });
+const b64text = s => b64(new Blob([s], {type: 'application/json'}));
+async function putFile(path, content64, sha, message){
+  for (let attempt = 0; attempt < 4; attempt++){
+    try {
+      const r = await ghJson(`/repos/${SYNC_REPO}/contents/${encodeURI(path)}`, {method: 'PUT', body: JSON.stringify({message, content: content64, branch: 'main', ...(sha ? {sha} : {})})});
+      return r.content.sha;
+    } catch(e){
+      if (e.status === 422 && !sha) return null;                  // already there (immutable media)
+      if (e.status === 409 || e.status === 422){                  // someone else committed first: refresh sha and retry
+        try { sha = (await ghJson(`/repos/${SYNC_REPO}/contents/${encodeURI(path)}`)).sha; } catch(_){ sha = undefined; }
+        await new Promise(r => setTimeout(r, 800 * (attempt + 1))); continue;
+      }
+      throw e;
+    }
+  }
+  throw new Error('GitHub kept rejecting the upload');
+}
+function mediaPlan(n){
+  if (!n.blob) return null;
+  const ext = n.type === 'audio' ? ext_(n) : (n.name && n.name.includes('.') ? n.name.split('.').pop().toLowerCase() : n.type === 'photo' ? 'jpg' : 'mp4');
+  const base = `inbox/${deviceId}/media/${uidOf(n)}.${ext}`, parts = Math.max(1, Math.ceil(n.blob.size / PART_BYTES));
+  return {base, parts, size: n.blob.size, mime: n.blob.type || 'application/octet-stream', paths: parts === 1 ? [base] : Array.from({length: parts}, (_, i) => `${base}.p${String(i + 1).padStart(3, '0')}`)};
+}
+function ext_(n){ return (n.blob.type.includes('mp4') || n.blob.type.includes('aac')) ? 'm4a' : n.blob.type.includes('ogg') ? 'ogg' : 'webm'; }
+function stateSnapshot(localNotes){
+  return {schema: 1, device: deviceId, owner: user, appVersion: APP_VERSION, updatedAt: new Date().toISOString(),
+    meetings: Object.values(meetingState).map(m => ({id: m.id, checkedIn: !!m.checkedIn, at: m.at || null, by: m.by || null, lat: m.lat ?? null, lng: m.lng ?? null, summary: m.summary || ''})),
+    notes: localNotes.map(n => { const mp = mediaPlan(n);
+      return {uid: uidOf(n), id: n.id, meetingId: n.meetingId, type: n.type, kind: n.type === 'audio' ? akind(n) : null, createdAt: n.createdAt, by: n.by || null,
+        duration: n.duration || null, marks: n.marks || [], tags: n.tags || [], text: n.text || '', transcript: n.transcript || '', recovered: !!n.recovered,
+        media: mp ? {path: mp.base, parts: mp.parts, size: mp.size, mime: mp.mime, uploaded: !!n.synced} : null}; })};
+}
+function syncUI(){
+  const b = $('#sync'); if (!b) return;
+  const map = {off: ['Sync off', 'off'], offline: ['Offline', 'off'], busy: [`Syncing${sync.pending ? ' ' + sync.pending : ''}…`, 'busy'], ok: ['Synced', 'ok'], err: ['Sync problem', 'err']};
+  const [label, cls] = map[sync.state] || map.off;
+  b.className = 'syncchip ' + cls; b.setAttribute('aria-label', label); b.querySelector('span').textContent = sync.state === 'busy' && sync.pending ? sync.pending : '';
+  const s = $('#sync-txt'); if (s) s.textContent = label + (sync.last ? ` · last ${fmtTime(sync.last)}` : '') + (sync.error && sync.state === 'err' ? ` · ${sync.error}` : '');
+}
+async function loadSynced(){
+  results = {}; (await getAll('results')).forEach(r => results[r.path] = r.data);
+  remoteNotes = []; _remoteMeetings = [];
+  (await getAll('remote')).forEach(r => { if (r.device === deviceId) return;
+    remoteNotes.push(...(r.notes || []).map(n => ({...n, remote: true, owner: r.owner})));
+    _remoteMeetings.push(...(r.meetings || []).map(m => ({...m, owner: r.owner}))); });
+}
+const resultFor = n => results[`results/notes/${uidOf(n)}.json`];
+let syncTimer = null;
+function scheduleSync(ms = 4000){ clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(), ms); }
+async function syncNow(manual){
+  if (!syncCfg()){ sync.state = 'off'; return syncUI(); }
+  if (!navigator.onLine){ sync.state = 'offline'; return syncUI(); }
+  if (rec || starting){ return scheduleSync(30000); }          // never compete with a live recording
+  if (sync.running){ sync.queued = true; return; }
+  sync.running = true; sync.state = 'busy'; sync.error = null; syncUI();
+  let changed = false;
+  try {
+    const tree = await ghJson(`/repos/${SYNC_REPO}/git/trees/main?recursive=1`).catch(e => { if (e.status === 409 || e.status === 404) return {tree: []}; throw e; }); // empty repo has no main yet
+    const remote = new Map((tree.tree || []).filter(x => x.type === 'blob').map(x => [x.path, x.sha]));
+    // 1. upload media that isn't in the repo yet (oldest first, one part at a time)
+    const local = await getAll('notes');
+    const todo = local.filter(n => n.blob && !n.synced).sort((a, b) => a.createdAt - b.createdAt);
+    sync.pending = todo.length; syncUI();
+    for (const n of todo){
+      if (rec || starting) break;
+      const mp = mediaPlan(n);
+      for (let i = 0; i < mp.paths.length; i++){
+        if (remote.has(mp.paths[i])) continue;
+        const piece = n.blob.slice(i * PART_BYTES, Math.min(n.blob.size, (i + 1) * PART_BYTES));
+        await putFile(mp.paths[i], await b64(piece), undefined, `${user || 'phone'}: ${n.type} ${uidOf(n)}${mp.parts > 1 ? ` part ${i + 1}/${mp.parts}` : ''}`);
+      }
+      const fresh = await get('notes', n.id); if (fresh){ fresh.synced = true; await put('notes', fresh); changed = true; } // card flips to "Uploaded"
+      sync.pending--; syncUI();
+    }
+    // 2. upload the notes/visits snapshot when it changed
+    const snap = stateSnapshot(await getAll('notes')), body = JSON.stringify(snap, null, 1);
+    const sig = body.replace(/"updatedAt": "[^"]*"/, '');
+    const statePath = `inbox/${deviceId}/state.json`;
+    if (sig !== localStorage.getItem('mn.sync.sig') || !remote.has(statePath)){
+      await putFile(statePath, await b64text(body), remote.get(statePath), `${user || 'phone'}: notes update`);
+      try { localStorage.setItem('mn.sync.sig', sig); } catch(e){}
+    }
+    // 3. download results and the other phone's notes when they changed
+    const have = new Map((await getAll('results')).map(r => [r.path, r.sha]));
+    for (const [path, sha] of remote){
+      if (path.startsWith('results/') && path.endsWith('.json') && have.get(path) !== sha){
+        const data = await (await ghRaw(path)).json(); await put('results', {path, sha, data}); changed = true;
+      }
+    }
+    const haveRemote = new Map((await getAll('remote')).map(r => [r.device, r.sha]));
+    for (const [path, sha] of remote){
+      const m = path.match(/^inbox\/([^/]+)\/state\.json$/); if (!m || m[1] === deviceId || haveRemote.get(m[1]) === sha) continue;
+      const st = await (await ghRaw(path)).json(); await put('remote', {device: m[1], sha, owner: st.owner, notes: st.notes || [], meetings: st.meetings || []}); changed = true;
+    }
+    sync.state = 'ok'; sync.last = Date.now(); sync.pending = 0;
+    if (manual) toast('Synced with Claude');
+  } catch(e){
+    sync.state = navigator.onLine ? 'err' : 'offline'; sync.error = e.status === 401 ? 'key expired or wrong, reconnect in Settings' : (e.message || String(e)).slice(0, 80);
+    if (manual) toast('Sync problem: ' + sync.error, 6000);
+    scheduleSync(60000);
+  } finally {
+    sync.running = false; syncUI();
+    if (changed && !rec && !editing()) render();
+    if (sync.queued){ sync.queued = false; scheduleSync(1500); }
+  }
+}
+async function connectSync(token){
+  token = (token || '').trim();
+  if (!/^(github_pat_|ghp_)[A-Za-z0-9_]{20,}$/.test(token)) return toast('That doesn\'t look like a GitHub key. It starts with github_pat_', 5000);
+  try {
+    localStorage.setItem('mn.sync', JSON.stringify({token, connectedAt: Date.now()}));
+    const repo = await ghJson(`/repos/${SYNC_REPO}`);
+    if (!repo.permissions || !repo.permissions.push) throw new Error('This key can read but not write. Give it Contents: Read and write.');
+    toast('Connected. Syncing now…'); render(); syncNow(true);
+  } catch(e){
+    try { localStorage.removeItem('mn.sync'); } catch(_){}
+    toast(e.status === 401 ? 'GitHub rejected the key. Copy it again.' : e.status === 404 ? 'The key can\'t see butterfly-sync. Check its repository access.' : 'Could not connect: ' + (e.message || e), 7000);
+  }
+}
+// Keep in step: after saving anything, when the connection returns, when the app comes back, and every 3 min while open.
+window.addEventListener('online', () => scheduleSync(1500));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(1500); });
+setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 180000);
+
+/* ---------- results UI ---------- */
+function list(items, cls = ''){ return items && items.length ? `<ul class="rl ${cls}">${items.map(x => `<li>${esc(typeof x === 'string' ? x : x.text || x.what || JSON.stringify(x))}${x && x.owner ? ` <span class="rby">${esc(x.owner)}</span>` : ''}</li>`).join('')}</ul>` : ''; }
+function factsHtml(s){
+  const rows = [['Prices', s.prices], ['Specs', s.specs], ['Lead times', s.lead_times], ['MOQ', s.moq], ['Samples', s.samples], ['Follow-ups', s.follow_ups], ['Open questions', s.questions]].filter(r => r[1] && r[1].length);
+  return rows.map(([h, v]) => `<div class="rtag">${h}</div>${list(v)}`).join('');
+}
+function resultHtml(n){
+  const r = resultFor(n), memo = n.type === 'audio' && akind(n) === 'memo';
+  if (!r){
+    if (n.remote) return `<div class="aiwait">Transcript and summary appear here once Claude has processed it.</div>`;
+    if (!syncCfg()) return `<div class="aiwait">Connect sync in Settings and Claude will transcribe, translate and summarise this.</div>`;
+    return `<div class="aiwait">${n.synced ? '✓ Uploaded. Claude transcribes, translates and summarises it within about an hour.' : '☁ Waiting to upload. Happens automatically when you have signal.'}</div>`;
+  }
+  if (r.status === 'failed') return `<div class="aiwait">Claude couldn't process this recording${r.reason ? ': ' + esc(r.reason) : ''}.</div>`;
+  const s = r.summary || {}, id = uidOf(n);
+  const seg = (arr, key) => (arr || []).map(x => `<p class="seg"><button class="segt" data-seekuid="${esc(id)}" data-t="${x.t0}">${fmtAt(x.t0, n.duration || 0)}</button> ${esc(x[key] || '')}</p>`).join('');
+  const tabs = memo ? [['sum', 'Summary'], ['tr', 'Transcript']] : [['sum', 'Summary'], ['en', 'Translation'], ['zh', '中文']];
+  const marks = (r.marks || []).filter(m => m.en || m.zh).map(m => `<li><button class="segt" data-seekuid="${esc(id)}" data-t="${m.t}">${fmtAt(m.t, n.duration || 0)}</button> <span class="rtg">${esc(m.tag)}</span> ${esc(m.en || '')}${m.zh ? `<div class="zh">${esc(m.zh)}</div>` : ''}</li>`).join('');
+  return `<div class="ai" data-ai="${esc(id)}">
+    <div class="aitabs" role="tablist">${tabs.map(([k, l], i) => `<button role="tab" data-tab="${k}" class="${i ? '' : 'on'}" aria-selected="${!i}">${l}</button>`).join('')}<span class="aibadge">✦ Claude</span></div>
+    <div class="aipane" data-pane="sum">${s.headline ? `<p class="aihead">${esc(s.headline)}</p>` : ''}${list(s.bullets)}${factsHtml(s)}${marks ? `<div class="rtag">Your tagged moments</div><ul class="rl">${marks}</ul>` : ''}</div>
+    ${memo ? `<div class="aipane" data-pane="tr" hidden>${seg(r.transcript, 'text') || esc(r.text || '')}</div>`
+           : `<div class="aipane" data-pane="en" hidden>${seg(r.translation, 'en')}</div><div class="aipane" data-pane="zh" hidden>${seg(r.transcript, 'zh')}</div>`}
+  </div>`;
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('.aitabs [data-tab]');
+  if (t){ const box = t.closest('.ai'); box.querySelectorAll('.aitabs [data-tab]').forEach(b => { b.classList.toggle('on', b === t); b.setAttribute('aria-selected', b === t); }); box.querySelectorAll('.aipane').forEach(p => p.hidden = p.dataset.pane !== t.dataset.tab); return; }
+  const s = e.target.closest('[data-seekuid]');
+  if (s){ const card = s.closest('.note-card'); const au = card && card.querySelector('audio'); if (!au) return toast('The audio is on the other phone'); au.currentTime = Math.max(0, Number(s.dataset.t) - 2); au.play().catch(() => {}); }
+});
+function briefHtml(b, title){
+  if (!b) return '';
+  return `<section class="card brief"><div class="eyebrow">✦ ${esc(title)} · by Claude</div>${b.headline ? `<h2 class="aihead" style="font-size:19px">${esc(b.headline)}</h2>` : ''}
+    ${b.offer ? `<p>${esc(b.offer)}</p>` : ''}${list(b.highlights || b.bullets)}${factsHtml(b)}
+    ${b.decisions_needed && b.decisions_needed.length ? `<div class="rtag">Decisions needed</div>${list(b.decisions_needed)}` : ''}
+    ${b.our_take ? `<div class="rtag">Our take</div><p>${esc(b.our_take)}</p>` : ''}
+    ${b.updatedAt ? `<div class="kindnote">Updated ${fmtTime(b.updatedAt)}</div>` : ''}</section>`;
+}
+const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
+const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
+
 /* ---------- boot ---------- */
-const APP_VERSION = '2.8';
+const APP_VERSION = '3.0';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
@@ -1173,6 +1440,7 @@ try { navigator.storage && navigator.storage.persist && navigator.storage.persis
   if (!user) $('#overlay').hidden = false;
   if (linkTookOver) setTimeout(() => toast(`This is ${user}'s link. If you're ${linkTookOver}, open your own link instead.`, 7000), 600);
   try { await render(); } catch(e){ $('#view').innerHTML = `<div class="card"><h2>Something went wrong</h2><p>${esc(e && e.message)}</p><p>Your notes are still stored. Close and reopen the app.</p></div>`; }
+  syncUI(); scheduleSync(2500);
 })();
 </script>
 </body>
