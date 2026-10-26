@@ -724,8 +724,11 @@ async function renderSettings(){
         <p>Recordings, photos and notes upload by themselves when you have signal. Claude transcribes, translates and summarises them about every hour. The results appear on each recording, on the visit page and in the day report. ${user === 'Sharoon' ? 'Naveed' : 'Sharoon'}'s notes show up here too.</p>
         <div class="rowbtns"><button class="btn ghost small" data-a="syncoff">Disconnect</button><button class="btn primary small" data-a="syncnow">Sync now</button></div>`
       : `<p>Turn this on once and Claude will transcribe, translate and summarise every meeting for you, right here in the app.</p>
-        <input id="synckey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the key (github_pat_…)" aria-label="Sync key" class="keyin">
-        <button class="btn primary" data-a="syncconnect">Connect</button>`}
+        <p><b>Copy your key</b> (it starts with github_pat_), then tap:</p>
+        <button class="btn primary" data-a="syncpaste">Paste key and connect</button>
+        <details><summary style="font-size:14px;color:var(--ink2);font-weight:700">Or type it in</summary>
+        <input id="synckey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github_pat_…" aria-label="Sync key" class="keyin" style="margin-top:8px">
+        <button class="btn ghost" data-a="syncconnect" style="margin-top:8px">Connect</button></details>`}
     </section>
     <section class="card"><h2>Who's recording</h2><div class="pick"><button data-u="Sharoon" class="${user==='Sharoon'?'on':''}">Sharoon</button><button data-u="Naveed" class="${user==='Naveed'?'on':''}">Naveed</button></div></section>
     <section class="card"><h2>Storage on this phone</h2>
@@ -764,6 +767,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'exporttext') return exportText();
   if (a === 'exportjson') return exportJson();
   if (a === 'syncconnect') return connectSync($('#synckey').value);
+  if (a === 'syncpaste'){ try { return connectSync(await navigator.clipboard.readText()); } catch(err){ toast('Couldn\'t read the clipboard. Use "Or type it in" below.', 5000); return; } }
   if (a === 'syncnow') return syncNow(true);
   if (a === 'syncoff'){ try { localStorage.removeItem('mn.sync'); } catch(err){} sync.state = 'off'; syncUI(); toast('Sync turned off. Everything stays on this phone.'); return render(); }
   if (a === 'repshare') return shareReport(b.dataset.s);
