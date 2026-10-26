@@ -556,7 +556,7 @@ $('#sync').onclick = () => { if (syncCfg()) syncNow(true); else location.hash = 
 /* ---------- views ---------- */
 function actionsHtml(id, memoId = id){
   return `<div class="actions">
-    <button class="hero" data-a="rec" data-m="${id}"><span class="ic">${ICON.meet}</span><span><b>Record meeting</b><span>Supplier talk · translated later</span></span></button>
+    <button class="hero" data-a="rec" data-m="${id}"><span class="ic">${ICON.meet}</span><span><b>Record meeting</b><span>Supplier talk · Claude translates</span></span></button>
     <div class="tiles">
       <button class="act memo" data-a="memo" data-m="${memoId}"><span class="bub grape">${ICON.memo}</span>Voice note${memoId !== id ? `<small class="for">for ${pad2(memoId)}</small>` : ''}</button>
       <button class="act" data-a="photo" data-m="${id}"><span class="bub peach">${ICON.cam}</span>Photo</button>
@@ -1397,14 +1397,18 @@ function resultHtml(n){
   }
   if (r.status === 'failed') return `<div class="aiwait">Claude couldn't process this recording${r.reason ? ': ' + esc(r.reason) : ''}.</div>`;
   const s = r.summary || {}, id = uidOf(n);
-  const seg = (arr, key) => (arr || []).map(x => `<p class="seg"><button class="segt" data-seekuid="${esc(id)}" data-t="${x.t0}">${fmtAt(x.t0, n.duration || 0)}</button> ${esc(x[key] || '')}</p>`).join('');
-  const tabs = memo ? [['sum', 'Summary'], ['tr', 'Transcript']] : [['sum', 'Summary'], ['en', 'Translation'], ['zh', '中文']];
-  const marks = (r.marks || []).filter(m => m.en || m.zh).map(m => `<li><button class="segt" data-seekuid="${esc(id)}" data-t="${m.t}">${fmtAt(m.t, n.duration || 0)}</button> <span class="rtg">${esc(m.tag)}</span> ${esc(m.en || '')}${m.zh ? `<div class="zh">${esc(m.zh)}</div>` : ''}</li>`).join('');
+  const orig = x => x.src || x.zh || x.text || '';   // original-language text (older results used "zh")
+  const seg = (arr, key) => (arr || []).map(x => `<p class="seg"><button class="segt" data-seekuid="${esc(id)}" data-t="${x.t0}">${fmtAt(x.t0, n.duration || 0)}</button> ${esc(key === 'orig' ? orig(x) : x[key] || '')}</p>`).join('');
+  const LANG = {zh: '中文', hi: 'हिन्दी', en: 'English', ur: 'اردو', ar: 'العربية', ml: 'മലയാളം'};
+  const origLabel = LANG[r.language] || (r.language ? 'Original' : '中文');
+  const englishOnly = r.language === 'en';
+  const tabs = memo || englishOnly ? [['sum', 'Summary'], ['tr', 'Transcript']] : [['sum', 'Summary'], ['en', 'Translation'], ['zh', origLabel]];
+  const marks = (r.marks || []).filter(m => m.en || m.zh || m.src).map(m => `<li><button class="segt" data-seekuid="${esc(id)}" data-t="${m.t}">${fmtAt(m.t, n.duration || 0)}</button> <span class="rtg">${esc(m.tag)}</span> ${esc(m.en || '')}${(m.src || m.zh) && !englishOnly ? `<div class="zh">${esc(m.src || m.zh)}</div>` : ''}</li>`).join('');
   return `<div class="ai" data-ai="${esc(id)}">
     <div class="aitabs" role="tablist">${tabs.map(([k, l], i) => `<button role="tab" data-tab="${k}" class="${i ? '' : 'on'}" aria-selected="${!i}">${l}</button>`).join('')}<span class="aibadge">✦ Claude</span></div>
     <div class="aipane" data-pane="sum">${s.headline ? `<p class="aihead">${esc(s.headline)}</p>` : ''}${list(s.bullets)}${factsHtml(s)}${marks ? `<div class="rtag">Your tagged moments</div><ul class="rl">${marks}</ul>` : ''}</div>
-    ${memo ? `<div class="aipane" data-pane="tr" hidden>${seg(r.transcript, 'text') || esc(r.text || '')}</div>`
-           : `<div class="aipane" data-pane="en" hidden>${seg(r.translation, 'en')}</div><div class="aipane" data-pane="zh" hidden>${seg(r.transcript, 'zh')}</div>`}
+    ${memo || englishOnly ? `<div class="aipane" data-pane="tr" hidden>${seg(r.transcript, 'orig') || esc(r.text || '')}</div>`
+           : `<div class="aipane" data-pane="en" hidden>${seg(r.translation, 'en')}</div><div class="aipane" data-pane="zh" hidden>${seg(r.transcript, 'orig')}</div>`}
   </div>`;
 }
 document.addEventListener('click', e => {
@@ -1425,7 +1429,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.0';
+const APP_VERSION = '3.1';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
