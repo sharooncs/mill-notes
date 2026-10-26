@@ -1347,7 +1347,9 @@ async function syncNow(manual){
         const data = await (await ghRaw(path)).json(); await put('results', {path, sha, data}); changed = true;
       }
     }
+    for (const path of have.keys()) if (!remote.has(path)){ await del('results', path); changed = true; } // removed online → removed here
     const haveRemote = new Map((await getAll('remote')).map(r => [r.device, r.sha]));
+    for (const dev of haveRemote.keys()) if (!remote.has(`inbox/${dev}/state.json`)){ await del('remote', dev); changed = true; }
     for (const [path, sha] of remote){
       const m = path.match(/^inbox\/([^/]+)\/state\.json$/); if (!m || m[1] === deviceId || haveRemote.get(m[1]) === sha) continue;
       const st = await (await ghRaw(path)).json(); await put('remote', {device: m[1], sha, owner: st.owner, notes: st.notes || [], meetings: st.meetings || []}); changed = true;
@@ -1429,7 +1431,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.1';
+const APP_VERSION = '3.2';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
