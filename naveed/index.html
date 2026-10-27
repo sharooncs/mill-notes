@@ -642,7 +642,7 @@ function renderMeeting(id){
     ${briefHtml(visitBrief(id), 'Visit brief')}
     ${actionsHtml(id)}
     <div id="composer-slot"></div>
-    <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span class="chip" id="sum-state" style="font-size:11px" ${st.summary ? '' : 'hidden'}>saved</span></div>
+    <section class="card" style="gap:8px"><div class="section-h"><h3>Summary</h3><span style="display:flex;gap:8px;align-items:center"><span class="chip" id="sum-state" style="font-size:11px" ${st.summary ? '' : 'hidden'}>saved</span><button class="btn ghost small" data-a="sharesum" data-m="${id}">Share summary</button></span></div>
       <textarea class="note" id="summary" placeholder="Two lines after the visit: what they offer, price indication, next step…">${esc(st.summary || '')}</textarea>
       ${otherSummaries(id)}</section>
     <div class="section-h"><h3>Notes (${notes.length})</h3><span style="display:flex;gap:8px"><button class="btn ghost small" data-a="import" data-m="${id}">Import</button><button class="btn ghost small" data-a="export" data-m="${id}">Export visit</button></span></div>`;
@@ -764,6 +764,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'caption') return captionNote(nid);
   if (a === 'del') return deleteNote(nid, b);
   if (a === 'export') return exportMeeting(mid);
+  if (a === 'sharesum'){ summaryFlush?.(); return shareVisitSummary(mid); }
   if (a === 'exporttext') return exportText();
   if (a === 'exportjson') return exportJson();
   if (a === 'syncconnect') return connectSync($('#synckey').value);
@@ -935,12 +936,12 @@ function totals(facts){
 }
 
 /* Markdown, for sharing to Files / AirDrop / Claude */
+const mdBrief = (b, h) => !b ? '' : `## ${h} (by Claude)\n\n${b.headline ? `**${b.headline}**\n\n` : ''}${b.offer ? b.offer + '\n\n' : ''}`
+    + [['', b.highlights || b.bullets], ['Prices', b.prices], ['Specs', b.specs], ['Lead times', b.lead_times], ['MOQ', b.moq], ['Samples', b.samples], ['Follow-ups', b.follow_ups], ['Open questions', b.questions], ['Decisions needed', b.decisions_needed]]
+      .filter(r => r[1] && r[1].length).map(([t, v]) => (t ? `**${t}**\n` : '') + v.map(x => `- ${typeof x === 'string' ? x : x.text || x.what}${x && x.owner ? ` (${x.owner})` : ''}`).join('\n')).join('\n\n') + (b.our_take ? `\n\n**Our take:** ${b.our_take}` : '') + '\n\n';
 function reportMarkdown(scope){
   const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
   let s = `# ${R.title}\n\nPrepared from ${user || 'this phone'}'s notes${remoteNotes.length ? ' and the other phone\'s synced notes' : ''} · generated ${fmtDateTime(Date.now())}\n\n`;
-  const mdBrief = (b, h) => !b ? '' : `## ${h} (by Claude)\n\n${b.headline ? `**${b.headline}**\n\n` : ''}${b.offer ? b.offer + '\n\n' : ''}`
-    + [['', b.highlights || b.bullets], ['Prices', b.prices], ['Specs', b.specs], ['Lead times', b.lead_times], ['MOQ', b.moq], ['Samples', b.samples], ['Follow-ups', b.follow_ups], ['Open questions', b.questions], ['Decisions needed', b.decisions_needed]]
-      .filter(r => r[1] && r[1].length).map(([t, v]) => (t ? `**${t}**\n` : '') + v.map(x => `- ${typeof x === 'string' ? x : x.text || x.what}${x && x.owner ? ` (${x.owner})` : ''}`).join('\n')).join('\n\n') + (b.our_take ? `\n\n**Our take:** ${b.our_take}` : '') + '\n\n';
   if (R.day) s += mdBrief(dayBrief(R.ms[0].date), 'Daily brief');
   s += `## At a glance\n\n- Visits: ${t.checked} of ${t.visits} checked in\n- Meeting recordings (to transcribe + translate): ${t.meeting} (${fmtHours(t.recSecs)})\n- Voice notes (own memos, to summarise): ${t.memo} (${fmtHours(t.memoSecs)})\n- Photos ${t.photo} · videos ${t.video} · typed notes ${t.text}\n- Summaries written: ${t.summaries} of ${t.visits}\n`;
   const missing = R.facts.filter(f => !f.st.summary && new Date(`${f.m.date}T${f.m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now()).map(f => pad2(f.m.id)); if (missing.length) s += `- Missing summary: visits ${missing.join(', ')}\n`;
@@ -1062,6 +1063,42 @@ async function exportMeeting(id){
   const total = files.reduce((s,f) => s + f.size, 0);
   if (files.length > 1 && total > 400e6) toast('Large export: share videos one by one if this fails', 4000);
   await shareFiles(files, `Visit ${id} · ${m.name}`);
+}
+/* One visit, summary only: Claude's brief, both team summaries, key points per recording, typed notes. No media, no transcripts. */
+function visitSummaryText(id){
+  const m = MEETINGS.find(x => x.id === id); const st = meetingState[id] || {};
+  const notes = (noteCache[id] || []).slice().sort((a,b) => a.createdAt - b.createdAt);
+  const who = n => n.remote ? (n.owner || n.by || 'Other phone') : (n.by || user || '');
+  let s = `# Visit ${pad2(id)} · ${m.name}\n${m.dow} ${m.date} · ${m.detail}${m.contact ? ` · ${m.contact}` : ''}\n`;
+  const ins = [st.checkedIn ? {at: st.at, by: st.by} : null, ...remoteMeetings().filter(x => x.id === id && x.checkedIn)].filter(Boolean).sort((a,b) => a.at - b.at)[0];
+  if (ins) s += `Checked in ${fmtDateTime(ins.at)}${ins.by ? ` by ${ins.by}` : ''}\n`;
+  s += '\n' + mdBrief(visitBrief(id), 'Visit brief');
+  const sums = [st.summary ? {by: user || 'Me', text: st.summary} : null, ...remoteMeetings().filter(x => x.id === id && x.summary).map(x => ({by: x.owner, text: x.summary}))].filter(Boolean);
+  if (sums.length) s += `## Team summaries\n\n${sums.map(x => `**${x.by}:** ${x.text.trim()}`).join('\n\n')}\n\n`;
+  const recs = notes.filter(n => n.type === 'audio');
+  if (recs.length){
+    s += `## Recordings & voice notes\n\n`;
+    for (const n of recs){
+      const ai = (resultFor(n) || {}).summary;
+      s += `- ${fmtTime(n.createdAt)} · ${AKIND[akind(n)].label} · ${who(n)} · ${fmtDur(n.duration || 0)}${ai && ai.headline ? `: **${ai.headline}**` : ' (not processed yet)'}\n`;
+      if (ai) for (const b of ai.bullets || []) s += `  - ${b}\n`;
+    }
+    s += '\n';
+  }
+  const typed = notes.filter(n => n.type === 'text' && n.text);
+  if (typed.length) s += `## Typed notes\n\n${typed.map(n => `- ${fmtTime(n.createdAt)} · ${who(n)}${n.tags && n.tags.length ? ` [${n.tags.join(', ')}]` : ''}: ${n.text.trim()}`).join('\n')}\n\n`;
+  const ph = notes.filter(n => n.type === 'photo').length, vi = notes.filter(n => n.type === 'video').length;
+  if (ph || vi) s += `Media: ${plural(ph, 'photo')}${vi ? ` · ${plural(vi, 'video')}` : ''} (use Export visit for the files)\n`;
+  return s.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+// Built synchronously so the share sheet keeps the tap's permission on iOS.
+async function shareVisitSummary(id){
+  const m = MEETINGS.find(x => x.id === id), text = visitSummaryText(id), title = `Visit ${pad2(id)} · ${m.name} · summary`;
+  if (navigator.share){
+    try { await navigator.share({title, text}); return; } catch(e){ if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(text); toast('Summary copied'); }
+  catch(e){ await shareFiles([new File([text], `V${pad2(id)}_${m.name.replace(/[^A-Za-z0-9]+/g,'')}_summary.md`, {type:'text/markdown'})], title); }
 }
 async function exportText(){
   const s = MEETINGS.map(m => meetingText(m.id)).join('\n\n---\n\n');
@@ -1431,7 +1468,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.2';
+const APP_VERSION = '3.3';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
