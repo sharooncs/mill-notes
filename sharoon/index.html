@@ -344,6 +344,12 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .zh{color:var(--ink2);font-size:14px}
 .brief{border:2px solid rgba(255,178,31,.6);background:linear-gradient(180deg,#FFFBF2,#FFF5E6)}
 /* Claude's questions */
+.moment{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-size:14px;color:var(--ink2);margin-top:8px}
+.moment q{display:block;width:100%;font-style:italic;color:var(--ink);quotes:"“" "”"}
+.pstrip{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.pstrip figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.pstrip img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
+.pstrip figcaption{font-size:13px;color:var(--ink2);line-height:1.35}
 .clar{border:2px solid rgba(110,79,216,.45);background:linear-gradient(180deg,#F7F4FF,#EFEAFF)}
 .clar .eyebrow{color:#5B3FC4}
 .cq{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid rgba(110,79,216,.18)}
@@ -700,7 +706,7 @@ function remoteNoteHtml(n){
   const ak = n.type === 'audio' ? akind(n) : null, k = ak ? AKIND[ak].icon : {photo:'cam', video:'vid', text:'txt'}[n.type];
   const kindHtml = ak ? `<span class="kindbadge ${ak}">${ICON[AKIND[ak].icon]}${ak === 'memo' ? 'Voice note' : 'Meeting'}</span>` : `<span class="kindbadge ${n.type}">${ICON[k]}${{text:'Note', photo:'Photo', video:'Video'}[n.type]}</span>`;
   let body = n.type === 'text' ? `<p>${esc(n.text || '')}</p>` : n.text ? `<p class="capline" style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>` : '';
-  if (n.type === 'photo' && n.media) body = `<button class="btn ghost small" data-remote-photo="${esc(n.media.path)}" data-parts="${n.media.parts || 1}">Show ${esc(n.owner || 'their')}'s photo</button>` + body;
+  if (n.type === 'photo' && n.media) body = `<button class="btn ghost small" data-remote-photo="${esc(n.media.path)}" data-parts="${n.media.parts || 1}">Show ${esc(n.owner || 'their')}'s photo</button>` + momentHtml(n) + body;
   if (ak) body = `<div class="kindnote">Recorded on ${esc(n.owner || 'the other')}'s phone${n.media && !n.media.uploaded ? ' · still uploading' : ''}</div>` + resultHtml(n) + body;
   const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
   return `<article class="note-card remote${ak ? ' k-' + ak : ''}" data-id="${esc(n.uid)}">
@@ -715,6 +721,40 @@ document.addEventListener('click', async e => {
     const u = URL.createObjectURL(new Blob(blobs)); urls.push(u); const img = document.createElement('img'); img.src = u; img.alt = ''; b.replaceWith(img);
   } catch(err){ b.textContent = 'Couldn\'t load: no connection?'; b.disabled = false; }
 });
+/* Photos taken while a meeting was being recorded belong to that moment: find the recording whose time window holds
+   the photo (either phone), the second into it, and what was being said then (from Claude's translation). */
+function photoMoment(p){
+  if (!p || (p.type !== 'photo' && p.type !== 'video')) return null;
+  const recs = (noteCache[p.meetingId] || []).filter(n => n.type === 'audio' && akind(n) === 'meeting' && n.duration);
+  let best = null;
+  for (const r of recs){
+    const t = (p.createdAt - r.createdAt) / 1000;
+    if (t < -5 || t > r.duration + 60) continue;
+    const own = (r.remote ? 1 : 0) === (p.remote ? 1 : 0); // prefer the recording on the same phone
+    if (!best || (own && !best.own)) best = {rec: r, t: Math.max(0, Math.min(t, r.duration)), own};
+  }
+  if (!best) return null;
+  const res = resultFor(best.rec), tr = (res && (res.translation || res.transcript)) || [];
+  const near = tr.filter(x => x.t0 <= best.t + 8 && (x.t1 ?? x.t0) >= best.t - 25 && !/^\(unclear\)$/.test(x.en || ''));
+  best.quote = near.map(x => x.en || x.src || x.text || '').join(' ').replace(/\s+/g, ' ').trim().slice(0, 220);
+  best.uid = uidOf(best.rec); best.who = best.rec.remote ? (best.rec.owner || best.rec.by) : (best.rec.by || user);
+  return best;
+}
+function momentHtml(p){
+  const m = photoMoment(p); if (!m) return '';
+  return `<div class="moment"><button class="segt" data-seekuid="${esc(m.uid)}" data-t="${m.t}">▶ ${fmtAt(m.t, m.rec.duration)}</button> <span>in ${esc(m.who || '')}'s meeting recording</span>${m.quote ? `<q>${esc(m.quote)}</q>` : ''}</div>`;
+}
+function photosDuring(rec){
+  const end = rec.createdAt + (rec.duration || 0) * 1000 + 60000;
+  return (noteCache[rec.meetingId] || []).filter(n => n.type === 'photo' && n.createdAt >= rec.createdAt - 5000 && n.createdAt <= end && (() => { const m = photoMoment(n); return m && m.rec === rec; })());
+}
+function photoStripHtml(rec){
+  const ps = photosDuring(rec); if (!ps.length) return '';
+  return `<div class="rtag">Photos during this recording</div><div class="pstrip">${ps.map(p => { const m = photoMoment(p);
+    const img = p.blob ? (() => { const u = URL.createObjectURL(p.blob); urls.push(u); return `<img src="${u}" alt="" loading="lazy">`; })()
+      : p.media ? `<button class="btn ghost small" data-remote-photo="${esc(p.media.path)}" data-parts="${p.media.parts || 1}">Show photo</button>` : '';
+    return `<figure>${img}<figcaption><button class="segt" data-seekuid="${esc(m.uid)}" data-t="${m.t}">${fmtAt(m.t, rec.duration)}</button>${m.quote ? ` ${esc(m.quote.slice(0, 120))}${m.quote.length > 120 ? '…' : ''}` : ''}</figcaption></figure>`; }).join('')}</div>`;
+}
 function noteHtml(n){
   if (n.remote) return remoteNoteHtml(n);
   const ak = n.type === 'audio' ? akind(n) : null;
@@ -723,8 +763,8 @@ function noteHtml(n){
   const long = t => t && t.length > 420 ? ' class="clamp"' : '';
   const more = t => t && t.length > 420 ? `<button class="morebtn" data-more>Show more</button>` : '';
   if (n.type === 'text') body = n.text ? `<p${long(n.text)}>${esc(n.text)}</p>${more(n.text)}` : `<p style="color:var(--ink2)"><i>Tag only, no text</i></p>`;
-  if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">`; }
-  if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>`; }
+  if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">` + momentHtml(n); }
+  if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>` + momentHtml(n); }
   if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" preload="metadata" data-dur="${n.duration || 0}"></audio>
     <div class="player"><button class="pp" data-play aria-label="Play">${ICON.play}</button><input type="range" min="0" max="${Math.max(1, Math.round(n.duration || 0))}" step="1" value="0" aria-label="Position"><span class="tm">${fmtAt(0, n.duration || 0)} / ${fmtAt(n.duration || 0, n.duration || 0)}</span></div>`
     + (n.marks && n.marks.length ? `<div class="marks${n.marks.length > 12 ? ' collapsed' : ''}">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtAt(x.t, n.duration)}</b> ${esc(x.tag === 'Mark' ? 'Marked' : x.tag)}</button>`).join('')}</div>${n.marks.length > 12 ? `<button class="morebtn" data-more-marks>Show all ${n.marks.length} tags</button>` : ''}` : '')
@@ -849,7 +889,7 @@ document.addEventListener('change', async (e) => {
     for (const f of files){
       const type = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : 'photo';
       const fromRoll = t.id === 'in-import' && f.lastModified && f.lastModified < Date.now() - 60000; // camera-roll item: keep when it was taken
-      await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: fromRoll ? f.lastModified : Date.now(), by: user, text:'', tags:[], name: f.name}); saved++;
+      await add('notes', {meetingId: pendingMeeting, type, blob: f, createdAt: fromRoll ? f.lastModified : Date.now(), by: user, text:'', tags:[], name: f.name, ...(rec && rec.meetingId === pendingMeeting && !fromRoll ? {during: rec.recId} : {})}); saved++;
     }
     toast(saved === 1 ? 'Saved' : `Saved ${saved} files`);
   } catch(err){ toast(`Saved ${saved} of ${files.length}. Storage error: ${(err && err.message) || err}`, 6000); }
@@ -1260,7 +1300,7 @@ function rTimeline(V, photoSrc){
       ${r.ai ? `<div class="h">${esc(r.ai.headline || '')} <span class="ai">✦ Claude</span></div>${(r.ai.bullets || []).length ? `<ul>${r.ai.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}` : `<div class="m" style="margin-top:4px">Transcript and summary pending</div>`}
       ${r.caption ? `<div class="m" style="margin-top:4px">Caption: ${esc(r.caption)}</div>` : ''}</div></li>`})),
     ...V.typed.map(t => ({at: t.at, html: `<li class="note"><time>${fmtTime(t.at)}</time><div class="body"><span class="kind">Note</span>${whoChip(t.by)} ${t.tags.map(g => `<span class="tag">${esc(g)}</span>`).join('')}<div style="margin-top:4px">${esc(t.text) || '<span class="m">(tag only)</span>'}</div></div></li>`})),
-    ...(photoSrc ? [] : V.photos.map(p => ({at: p.createdAt, html: `<li class="photo"><time>${fmtTime(p.createdAt)}</time><div class="body"><span class="kind" style="background:var(--mintbg);color:var(--mint)">Photo</span>${whoChip(rNameOf(p))}${p.text ? ` <span class="m">${esc(p.text)}</span>` : ''}</div></li>`})))
+    ...(photoSrc ? [] : V.photos.map(p => ({at: p.createdAt, html: `<li class="photo"><time>${fmtTime(p.createdAt)}</time><div class="body"><span class="kind" style="background:var(--mintbg);color:var(--mint)">Photo</span>${whoChip(rNameOf(p))}${p.text ? ` <span class="m">${esc(p.text)}</span>` : ''}${(m => m && m.quote ? ` <span class="m">at ${fmtAt(m.t, m.rec.duration)}: “${esc(m.quote.slice(0, 140))}”</span>` : '')(photoMoment(p))}</div></li>`})))
   ].sort((a,b) => a.at - b.at);
   return items.length ? `<section><h2>On-site record <span class="n">${items.length}</span></h2><ol class="tl">${items.map(x => x.html).join('')}</ol></section>` : '';
 }
@@ -1268,7 +1308,7 @@ function rGallery(V, photoSrc){
   if (!photoSrc) return '';
   const shown = V.photos.filter(p => photoSrc[p.uid || p.id]);
   if (!shown.length) return '';
-  return `<section><h2>Photos <span class="n">${shown.length}${shown.length < V.photos.length ? ` of ${V.photos.length}` : ''}</span></h2><div class="gallery">${shown.map(p => `<figure><img src="${photoSrc[p.uid || p.id]}" alt=""><figcaption>${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}${p.text ? ` · ${esc(p.text)}` : ''}</figcaption></figure>`).join('')}</div></section>`;
+  return `<section><h2>Photos <span class="n">${shown.length}${shown.length < V.photos.length ? ` of ${V.photos.length}` : ''}</span></h2><div class="gallery">${shown.map(p => `<figure><img src="${photoSrc[p.uid || p.id]}" alt=""><figcaption>${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}${p.text ? ` · ${esc(p.text)}` : ''}${(m => m ? `<br><b>At ${fmtAt(m.t, m.rec.duration)} in the meeting recording</b>${m.quote ? `: “${esc(m.quote.slice(0, 160))}${m.quote.length > 160 ? '…' : ''}”` : ''}` : '')(photoMoment(p))}</figcaption></figure>`).join('')}</div></section>`;
 }
 function visitReportHtml(id, photoSrc){
   const V = visitModel(id), m = V.m, b = V.brief;
@@ -1665,7 +1705,7 @@ function stateSnapshot(localNotes){
     meetings: Object.values(meetingState).map(m => ({id: m.id, checkedIn: !!m.checkedIn, at: m.at || null, by: m.by || null, lat: m.lat ?? null, lng: m.lng ?? null, summary: m.summary || ''})),
     notes: localNotes.map(n => { const mp = mediaPlan(n);
       return {uid: uidOf(n), id: n.id, meetingId: n.meetingId, type: n.type, kind: n.type === 'audio' ? akind(n) : null, createdAt: n.createdAt, by: n.by || null,
-        duration: n.duration || null, marks: n.marks || [], tags: n.tags || [], text: n.text || '', transcript: n.transcript || '', recovered: !!n.recovered,
+        duration: n.duration || null, marks: n.marks || [], tags: n.tags || [], text: n.text || '', transcript: n.transcript || '', recovered: !!n.recovered, during: n.during || null,
         media: mp ? {path: mp.base, parts: mp.parts, size: mp.size, mime: mp.mime, uploaded: !!n.synced} : null}; }),
     answers: Object.values(answers)};
 }
@@ -1861,7 +1901,7 @@ function resultHtml(n){
   const marks = (r.marks || []).filter(m => m.en || m.zh || m.src).map(m => `<li><button class="segt" data-seekuid="${esc(id)}" data-t="${m.t}">${fmtAt(m.t, n.duration || 0)}</button> <span class="rtg">${esc(m.tag)}</span> ${esc(m.en || '')}${(m.src || m.zh) && !englishOnly ? `<div class="zh">${esc(m.src || m.zh)}</div>` : ''}</li>`).join('');
   return `<div class="ai" data-ai="${esc(id)}">
     <div class="aitabs" role="tablist">${tabs.map(([k, l], i) => `<button role="tab" data-tab="${k}" class="${i ? '' : 'on'}" aria-selected="${!i}">${l}</button>`).join('')}<span class="aibadge">✦ Claude</span></div>
-    <div class="aipane" data-pane="sum">${s.headline ? `<p class="aihead">${esc(s.headline)}</p>` : ''}${list(s.bullets)}${factsHtml(s)}${marks ? `<div class="rtag">Your tagged moments</div><ul class="rl">${marks}</ul>` : ''}</div>
+    <div class="aipane" data-pane="sum">${s.headline ? `<p class="aihead">${esc(s.headline)}</p>` : ''}${list(s.bullets)}${factsHtml(s)}${marks ? `<div class="rtag">Your tagged moments</div><ul class="rl">${marks}</ul>` : ''}${photoStripHtml(n)}</div>
     ${memo || englishOnly ? `<div class="aipane" data-pane="tr" hidden>${seg(r.transcript, 'orig') || esc(r.text || '')}</div>`
            : `<div class="aipane" data-pane="en" hidden>${seg(r.translation, 'en')}</div><div class="aipane" data-pane="zh" hidden>${seg(r.transcript, 'orig')}</div>`}
   </div>`;
@@ -1870,7 +1910,10 @@ document.addEventListener('click', e => {
   const t = e.target.closest('.aitabs [data-tab]');
   if (t){ const box = t.closest('.ai'); box.querySelectorAll('.aitabs [data-tab]').forEach(b => { b.classList.toggle('on', b === t); b.setAttribute('aria-selected', b === t); }); box.querySelectorAll('.aipane').forEach(p => p.hidden = p.dataset.pane !== t.dataset.tab); return; }
   const s = e.target.closest('[data-seekuid]');
-  if (s){ const card = s.closest('.note-card'); const au = card && card.querySelector('audio'); if (!au) return toast('The audio is on the other phone'); au.currentTime = Math.max(0, Number(s.dataset.t) - 2); au.play().catch(() => {}); }
+  if (s){ let card = s.closest('.note-card'); let au = card && card.querySelector('audio');
+    if (!au){ const own = Object.values(noteCache).flat().find(n => !n.remote && n.type === 'audio' && uidOf(n) === s.dataset.seekuid);
+      card = own && document.querySelector(`.note-card[data-id="${own.id}"]`); au = card && card.querySelector('audio'); if (card) card.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+    if (!au) return toast('The audio is on the other phone'); au.currentTime = Math.max(0, Number(s.dataset.t) - 2); au.play().catch(() => {}); }
 });
 function briefHtml(b, title){
   if (!b) return '';
@@ -1884,7 +1927,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.6';
+const APP_VERSION = '3.7';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
