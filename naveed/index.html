@@ -343,6 +343,23 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .seg{margin:0 0 6px} .segt{font-size:12px;font-weight:800;color:#C2452A;background:rgba(194,69,42,.1);border-radius:8px;padding:2px 6px;margin-right:4px}
 .zh{color:var(--ink2);font-size:14px}
 .brief{border:2px solid rgba(255,178,31,.6);background:linear-gradient(180deg,#FFFBF2,#FFF5E6)}
+/* Claude's questions */
+.clar{border:2px solid rgba(110,79,216,.45);background:linear-gradient(180deg,#F7F4FF,#EFEAFF)}
+.clar .eyebrow{color:#5B3FC4}
+.cq{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid rgba(110,79,216,.18)}
+.cq:first-of-type{border-top:0;padding-top:4px}
+.cq .qt{font-size:16px;font-weight:700;line-height:1.35}
+.cq .ctx{font-size:14px;color:var(--ink2);background:rgba(255,255,255,.7);border-radius:12px;padding:8px 10px}
+.cq .ctx .zh{color:var(--mute);margin-top:4px}
+.cq .opts{display:flex;flex-wrap:wrap;gap:8px}
+.cq .opts button{min-height:44px;padding:0 14px;border-radius:13px;border:1.5px solid rgba(110,79,216,.45);background:#fff;font:inherit;font-size:15px;font-weight:700;color:#3F2A99}
+.cq .opts button.on{background:#6E4FD8;border-color:#6E4FD8;color:#fff}
+.cq .other{display:flex;gap:8px}.cq .other input{flex:1;min-height:44px;border-radius:13px;border:1.5px solid rgba(110,79,216,.35);padding:0 12px;font:inherit;font-size:16px}
+.cq .ans{font-size:14px;font-weight:700;color:#0F6B47}
+.cq.done .opts,.cq.done .other{display:none}
+.cq.done.edit .opts,.cq.done.edit .other{display:flex}
+.clarbar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:18px;background:#EFEAFF;border:1.5px solid rgba(110,79,216,.4);color:#3F2A99;font-weight:800;text-decoration:none}
+.clarbar .n{min-width:26px;height:26px;border-radius:13px;display:grid;place-items:center;background:#6E4FD8;color:#fff;font-size:13px}
 .note-card.remote{background:rgba(255,255,255,.66);border-style:dashed}
 @media (prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important} }
 </style>
@@ -408,7 +425,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 <div id="rpt" hidden role="dialog" aria-modal="true" aria-labelledby="rpt-title">
   <div class="rpt-bar"><button class="rpt-x" data-a="rptclose" aria-label="Close report">✕</button><div class="rpt-t"><b id="rpt-title"></b><span id="rpt-note"></span></div></div>
   <iframe id="rpt-frame" title="Report preview"></iframe>
-  <div class="rpt-act"><button class="btn ghost small" data-a="rptcopy">Copy text</button><button class="btn ghost small" data-a="rptprint">Print / PDF</button><button class="btn primary small" data-a="rptshare">Share</button></div>
+  <div class="rpt-act"><button class="btn ghost small" data-a="rptcopy">Copy text</button><button class="btn ghost small" data-a="rptprint" id="rpt-pdf">PDF</button><button class="btn primary small" data-a="rptshare">Share</button></div>
 </div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -616,7 +633,7 @@ function renderHome(){
   const {m, why} = currentMeeting();
   const days = ['02','03','04','05'];
   const rd = reportDay();
-  let html = contbarHtml() + `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Butterfly Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>
+  let html = contbarHtml() + `<div class="bigtitle">${user ? `Hi ${esc(user)}` : 'Butterfly Notes'}<small>China foil-mill tour · 27–30 Oct</small></div>${clarbarHtml()}
   <section class="now glass"><div class="eyebrow">${why === 'Now' ? '<span class="live"></span>' : ''}${why} · ${m.dow} ${m.time}</div>
     <h2><a class="nowlink" href="#m${m.id}" aria-label="Open visit ${esc(m.name)}"><span class="num${meetingState[m.id]?.checkedIn ? ' done' : ''}">${String(m.id).padStart(2,'0')}</span><span>${esc(m.name)}</span><span class="go">›</span></a></h2>
     <div class="meta">${esc(m.detail)}${m.contact ? ` · ${esc(m.contact)} <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
@@ -651,6 +668,7 @@ function renderMeeting(id){
     <h2>${esc(m.name)}</h2>
     <div class="meta">${esc(m.detail)}${m.contact ? `<br><b>${esc(m.contact)}</b> <a class="phone" href="tel:${esc(m.phone.replace(/\s/g,''))}">${esc(m.phone)}</a>` : ''}</div>
     ${checkinHtml(m)}</section>
+    ${clarifyHtml(id)}
     ${briefHtml(visitBrief(id), 'Visit brief')}
     ${actionsHtml(id)}
     <div id="composer-slot"></div>
@@ -1316,11 +1334,12 @@ async function openReport(kind, arg){
   const r = kind === 'visit'
     ? {kind, id: arg, html: visitReportHtml(arg, null), title: `Visit ${pad2(arg)} · ${MEETINGS.find(m => m.id === arg).name}`, file: `V${pad2(arg)}_${MEETINGS.find(m => m.id === arg).name.replace(/[^A-Za-z0-9]+/g, '')}_report.html`, md: visitSummaryText(arg)}
     : {kind, ...scopeReportHtml(arg)};
-  rpt = r; const box = $('#rpt'); box.hidden = false; $('#rpt-title').textContent = r.title; $('#rpt-frame').srcdoc = r.html; document.body.style.overflow = 'hidden';
+  rpt = r; const pb = $('#rpt-pdf'); pb.textContent = 'PDF'; pb.className = 'btn ghost small'; pb.disabled = false;
+  const box = $('#rpt'); box.hidden = false; $('#rpt-title').textContent = r.title; $('#rpt-frame').srcdoc = r.html; document.body.style.overflow = 'hidden';
   if (kind === 'visit' && (noteCache[arg] || []).some(n => n.type === 'photo')){
     $('#rpt-note').textContent = 'Adding photos…';
     const src = await photoDataUrls(arg); if (rpt !== r) return;
-    r.html = visitReportHtml(arg, src); $('#rpt-frame').srcdoc = r.html; $('#rpt-note').textContent = '';
+    r.html = visitReportHtml(arg, src); r.pdf = null; $('#rpt-frame').srcdoc = r.html; $('#rpt-note').textContent = '';
   }
 }
 function closeReport(){ rpt = null; $('#rpt').hidden = true; $('#rpt-frame').srcdoc = ''; $('#rpt-note').textContent = ''; document.body.style.overflow = ''; }
@@ -1336,7 +1355,61 @@ async function shareReportFile(){
 async function copyReportText(){ if (!rpt) return; try { await navigator.clipboard.writeText(rpt.md); toast('Copied as text'); } catch(e){ toast('Couldn\'t copy here', 3000); } }
 window.addEventListener('hashchange', () => { if (rpt) closeReport(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && rpt) closeReport(); });
-function printReport(){ const w = $('#rpt-frame').contentWindow; try { w.focus(); w.print(); } catch(e){ toast('Printing isn\'t available here. Use Share, then Print.', 4000); } }
+/* PDF: iOS home-screen apps can't print, so the phone renders the report to A4 pages itself (html2canvas + jsPDF, cached
+   for offline). Building takes a few seconds and iOS only opens the share sheet straight after a tap, so the first tap builds
+   and the button turns into "Share PDF" for the second. */
+const loadScript = src => new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('PDF tools not available offline yet')); document.head.appendChild(s); });
+async function buildPdf(r){
+  await loadScript('vendor/html2canvas.min.js'); await loadScript('vendor/jspdf.umd.min.js');
+  const W = 794; // A4 width at 96 dpi
+  const f = document.createElement('iframe'); f.setAttribute('aria-hidden', 'true');
+  f.style.cssText = `position:fixed;left:-10000px;top:0;width:${W}px;height:1123px;border:0;visibility:hidden`;
+  document.body.appendChild(f);
+  try {
+    await new Promise(res => { f.onload = res; f.srcdoc = r.html; });
+    const d = f.contentDocument;
+    // apply the report's own print styles (html2canvas renders the screen media)
+    for (const sh of [...d.styleSheets]) { let rules; try { rules = [...sh.cssRules]; } catch(e){ continue; }
+      for (const ru of rules) if (ru.media && /print/.test(ru.media.mediaText)) for (const inner of [...ru.cssRules]) { try { sh.insertRule(inner.cssText, sh.cssRules.length); } catch(e){} } }
+    d.documentElement.style.background = '#fff'; d.body.style.background = '#fff';
+    const fix = d.createElement('style'); fix.textContent = '*{font-variant-numeric:normal!important;font-feature-settings:normal!important;letter-spacing:normal!important;text-rendering:geometricPrecision}'; d.head.appendChild(fix); // html2canvas mis-spaces these
+    try { await d.fonts.ready; } catch(e){}
+    await Promise.all([...d.images].map(i => i.complete ? 0 : new Promise(x => { i.onload = i.onerror = x; })));
+    const H = d.documentElement.scrollHeight; f.style.height = H + 'px';
+    const scale = 2, canvas = await window.html2canvas(d.body, {scale, width: W, windowWidth: W, height: H, windowHeight: H, backgroundColor: '#ffffff', useCORS: true, logging: false});
+    // cut between blocks, never through a line: candidate cut points are the bottoms of sections, rows, items and paragraphs
+    const cuts = [...d.querySelectorAll('section,header,.panel,.card,tr,li,p,h2,h3,figure,img,.q,.take')].map(el => Math.round((el.getBoundingClientRect().bottom + d.defaultView.scrollY) * scale)).sort((a, b) => a - b);
+    const {jsPDF} = window.jspdf, pdf = new jsPDF({unit: 'mm', format: 'a4', compress: true});
+    const mm = 10, cw = 210 - 2 * mm, pageH = Math.floor((297 - 2 * mm) / cw * canvas.width);
+    let y = 0, page = 0;
+    while (y < canvas.height - 4){
+      let end = Math.min(canvas.height, y + pageH);
+      if (end < canvas.height){ const best = cuts.filter(c => c > y + pageH * 0.55 && c <= y + pageH).pop(); if (best) end = best; }
+      const sl = document.createElement('canvas'); sl.width = canvas.width; sl.height = end - y;
+      const g = sl.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, sl.width, sl.height); g.drawImage(canvas, 0, y, sl.width, sl.height, 0, 0, sl.width, sl.height);
+      if (page++) pdf.addPage();
+      pdf.addImage(sl.toDataURL('image/jpeg', 0.9), 'JPEG', mm, mm, cw, sl.height * cw / sl.width);
+      pdf.setFontSize(8); pdf.setTextColor(140); pdf.text(`${r.title} · page ${page}`, mm, 297 - 5);
+      y = end;
+    }
+    return new File([pdf.output('blob')], r.file.replace(/\.html$/, '.pdf'), {type: 'application/pdf'});
+  } finally { f.remove(); }
+}
+async function printReport(){
+  if (!rpt) return; const r = rpt, b = $('#rpt-pdf');
+  if (r.pdf) return sharePdf(r);
+  if (r.building) return; r.building = true; b.textContent = 'Making PDF…'; b.disabled = true;
+  try { r.pdf = await buildPdf(r); if (rpt !== r) return; b.textContent = 'Share PDF'; b.classList.add('primary'); b.classList.remove('ghost'); toast('PDF ready. Tap Share PDF.'); }
+  catch(e){ toast('Couldn\'t make the PDF: ' + (e.message || e), 5000); b.textContent = 'PDF'; }
+  finally { r.building = false; b.disabled = false; }
+}
+async function sharePdf(r){
+  const f = r.pdf;
+  if (navigator.share && navigator.canShare && navigator.canShare({files: [f]})){
+    try { await navigator.share({files: [f], title: r.title}); return; } catch(e){ if (e.name === 'AbortError') return; }
+  }
+  const u = URL.createObjectURL(f); urls.push(u); const a = document.createElement('a'); a.href = u; a.download = f.name; document.body.appendChild(a); a.click(); a.remove();
+}
 
 async function exportText(){
   const s = MEETINGS.map(m => meetingText(m.id)).join('\n\n---\n\n');
@@ -1550,6 +1623,7 @@ const syncCfg = () => { try { return JSON.parse(localStorage.getItem('mn.sync') 
 const deviceId = (() => { try { let d = localStorage.getItem('mn.device'); if (!d){ d = Math.random().toString(36).slice(2, 10); localStorage.setItem('mn.device', d); } return d; } catch(e){ return 'nodevice'; } })();
 const uidOf = n => n.uid || `${deviceId}-${n.id}`;
 let results = {};   // path → parsed JSON (results/…)
+let remoteDocs = []; // the other phone's state.json docs
 let remoteNotes = []; // notes from the other phone(s)
 const sync = {state: 'off', pending: 0, last: null, error: null, running: false, queued: false};
 
@@ -1592,7 +1666,8 @@ function stateSnapshot(localNotes){
     notes: localNotes.map(n => { const mp = mediaPlan(n);
       return {uid: uidOf(n), id: n.id, meetingId: n.meetingId, type: n.type, kind: n.type === 'audio' ? akind(n) : null, createdAt: n.createdAt, by: n.by || null,
         duration: n.duration || null, marks: n.marks || [], tags: n.tags || [], text: n.text || '', transcript: n.transcript || '', recovered: !!n.recovered,
-        media: mp ? {path: mp.base, parts: mp.parts, size: mp.size, mime: mp.mime, uploaded: !!n.synced} : null}; })};
+        media: mp ? {path: mp.base, parts: mp.parts, size: mp.size, mime: mp.mime, uploaded: !!n.synced} : null}; }),
+    answers: Object.values(answers)};
 }
 function syncUI(){
   const b = $('#sync'); if (!b) return;
@@ -1603,8 +1678,8 @@ function syncUI(){
 }
 async function loadSynced(){
   results = {}; (await getAll('results')).forEach(r => results[r.path] = r.data);
-  remoteNotes = []; _remoteMeetings = [];
-  (await getAll('remote')).forEach(r => { if (r.device === deviceId) return;
+  remoteNotes = []; _remoteMeetings = []; remoteDocs = [];
+  (await getAll('remote')).forEach(r => { if (r.device === deviceId) return; remoteDocs.push(r);
     remoteNotes.push(...(r.notes || []).map(n => ({...n, remote: true, owner: r.owner})));
     _remoteMeetings.push(...(r.meetings || []).map(m => ({...m, owner: r.owner}))); });
 }
@@ -1688,6 +1763,80 @@ window.addEventListener('online', () => scheduleSync(1500));
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(1500); });
 setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 180000);
 
+/* ---------- Claude's questions (clarifications) ----------
+   Claude adds `clarify` items to results/notes/<uid>.json (and results/visits/<id>.json) when something in a recording
+   was unclear: {id, t, uid, q, options[], context_en, context_src, clip}. You tap an answer here; it is stored on this
+   phone, synced in state.json as `answers`, and the next Claude run folds it into the transcript summary and visit brief. */
+let answers = {}; try { answers = JSON.parse(localStorage.getItem('mn.answers') || '{}'); } catch(e){}
+const saveAnswers = () => { try { localStorage.setItem('mn.answers', JSON.stringify(answers)); } catch(e){} };
+function clarifyFor(mid){
+  const out = [], seen = new Set();
+  const add = (c, src) => { if (!c || !c.id || !c.q || seen.has(c.id)) return; seen.add(c.id); out.push({...c, src}); };
+  for (const [path, r] of Object.entries(results)){
+    if (path.startsWith('results/notes/') && r && Number(r.meetingId) === Number(mid)) (r.clarify || []).forEach(c => add(c, r));
+  }
+  ((results[`results/visits/${mid}.json`] || {}).clarify || []).forEach(c => add(c, null));
+  return out.sort((a, b) => (a.uid || '').localeCompare(b.uid || '') || (a.t || 0) - (b.t || 0));
+}
+function answerOf(qid){
+  if (answers[qid]) return answers[qid];
+  for (const r of remoteDocs) if (r.answers) { const a = r.answers.find(x => x.id === qid); if (a) return {...a, remote: true}; }
+  return null;
+}
+function openClarifyCount(mid){
+  const list = mid ? clarifyFor(mid) : MEETINGS.flatMap(m => clarifyFor(m.id));
+  return list.filter(c => !c.resolved && !answerOf(c.id)).length;
+}
+function clarifyHtml(mid){
+  const qs = clarifyFor(mid).filter(c => !c.resolved); if (!qs.length) return '';
+  const open = qs.filter(c => !answerOf(c.id)).length;
+  return `<section class="card clar" id="clar"><div class="eyebrow">✦ Claude needs your help · ${open ? `${open} open` : 'all answered ✓'}</div>
+    <p style="margin:0;font-size:14px;color:var(--ink2)">These parts of the recordings were hard to hear. Tap ▶ to listen, then pick what was said.</p>
+    ${qs.map(c => { const a = answerOf(c.id);
+      return `<div class="cq${a ? ' done' : ''}" data-qid="${esc(c.id)}">
+        <div class="qt">${esc(c.q)}</div>
+        ${c.context_en || c.context_src ? `<div class="ctx">“${esc(c.context_en || '')}”${c.context_src && c.context_src !== c.context_en ? `<div class="zh">${esc(c.context_src)}</div>` : ''}</div>` : ''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${c.clip || c.uid ? `<button class="btn ghost small" data-clip="${esc(c.clip || '')}" data-cuid="${esc(c.uid || '')}" data-t="${Number(c.t) || 0}">▶ Listen${c.t != null ? ' at ' + fmtDur(Number(c.t)) : ''}</button>` : ''}
+          ${a ? `<button class="btn ghost small" data-cedit>Change</button>` : ''}</div>
+        ${a ? `<div class="ans">✓ ${esc(a.a)} <span style="color:var(--mute);font-weight:600">· ${esc(a.by || '')}${a.remote ? ' (other phone)' : ''}</span></div>` : ''}
+        <div class="opts">${[...(c.options || []), 'Not sure'].map(o => `<button data-cans="${esc(o)}" class="${a && a.a === o ? 'on' : ''}">${esc(o)}</button>`).join('')}</div>
+        <div class="other"><input type="text" placeholder="Something else? Type it" aria-label="Other answer" enterkeyhint="done"><button class="btn primary small" data-cother>Save</button></div>
+      </div>`; }).join('')}</section>`;
+}
+function clarbarHtml(){
+  const n = openClarifyCount(); if (!n) return '';
+  const first = MEETINGS.find(m => openClarifyCount(m.id));
+  return `<a class="clarbar" href="#m${first.id}"><span class="n">${n}</span><span>Claude has ${n} question${n > 1 ? 's' : ''} about the recordings</span><span style="margin-left:auto">›</span></a>`;
+}
+async function setAnswer(qid, a){
+  const v = String(a || '').trim(); if (!v) return;
+  answers[qid] = {id: qid, a: v, by: user || '', at: new Date().toISOString()}; saveAnswers();
+  toast('Answer saved. Claude uses it on the next run.'); scheduleSync(1500);
+  const y = window.scrollY; render(); requestAnimationFrame(() => window.scrollTo(0, y));
+}
+let clipAudio = null;
+document.addEventListener('click', async e => {
+  const q = e.target.closest('.cq'); if (!q) return;
+  const qid = q.dataset.qid;
+  const ans = e.target.closest('[data-cans]'); if (ans) return setAnswer(qid, ans.dataset.cans);
+  if (e.target.closest('[data-cother]')) return setAnswer(qid, q.querySelector('.other input').value);
+  if (e.target.closest('[data-cedit]')) { q.classList.toggle('edit'); return; }
+  const pl = e.target.closest('[data-clip]'); if (!pl) return;
+  try { clipAudio && clipAudio.pause(); } catch(err){}
+  const t = Number(pl.dataset.t) || 0;
+  // 1. this phone has the recording: play it right there
+  const own = Object.values(noteCache).flat().find(n => !n.remote && n.blob && uidOf(n) === pl.dataset.cuid);
+  if (own){ const u = URL.createObjectURL(own.blob); urls.push(u); clipAudio = new Audio(u); clipAudio.currentTime = Math.max(0, t - 8); clipAudio.play().catch(() => {}); return; }
+  // 2. otherwise the 30-second clip Claude cut, from the sync repo
+  if (!pl.dataset.clip) return toast('The audio is on the other phone');
+  if (!syncCfg() || !navigator.onLine) return toast('Needs a connection to play this clip');
+  const old = pl.textContent; pl.textContent = 'Loading…';
+  try { const b = await (await ghRaw(pl.dataset.clip)).blob(); const u = URL.createObjectURL(b); urls.push(u); clipAudio = new Audio(u); await clipAudio.play(); }
+  catch(err){ toast('Couldn\'t load the clip'); }
+  finally { pl.textContent = old; }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('.cq .other input')){ e.preventDefault(); setAnswer(e.target.closest('.cq').dataset.qid, e.target.value); } });
+
 /* ---------- results UI ---------- */
 function list(items, cls = ''){ return items && items.length ? `<ul class="rl ${cls}">${items.map(x => `<li>${esc(typeof x === 'string' ? x : x.text || x.what || JSON.stringify(x))}${x && x.owner ? ` <span class="rby">${esc(x.owner)}</span>` : ''}</li>`).join('')}</ul>` : ''; }
 function factsHtml(s){
@@ -1735,7 +1884,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.5';
+const APP_VERSION = '3.6';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){

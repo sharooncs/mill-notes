@@ -1,7 +1,7 @@
 // Mill Notes service worker — app shell cached for full offline use.
-const VERSION = 'v18';
+const VERSION = 'v19';
 const CACHE = 'millnotes-' + VERSION;
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-512.png', './icon-512-maskable.png'];
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-512.png', './icon-512-maskable.png', './vendor/html2canvas.min.js', './vendor/jspdf.umd.min.js'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL.map((u) => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));

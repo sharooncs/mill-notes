@@ -18,6 +18,7 @@ for name in ['Sharoon', 'Naveed']:
     shutil.copy(root / 'sw.js', d / 'sw.js')
     for icon in ['icon-180.png', 'icon-512.png', 'icon-512-maskable.png']:
         shutil.copy(root / icon, d / icon)
+    shutil.copytree(root / 'vendor', d / 'vendor', dirs_exist_ok=True)  # PDF tools, cached for offline
     m = json.loads((root / 'manifest.webmanifest').read_text())
     m['name'] = f'Butterfly Notes · {name}'; m['id'] = f'./?u={name.lower()}'
     (d / 'manifest.webmanifest').write_text(json.dumps(m, indent=2, ensure_ascii=False) + '\n')
