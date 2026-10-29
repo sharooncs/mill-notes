@@ -444,18 +444,18 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 <script>
 /* ---------- data ---------- */
 const MEETINGS = [
- {id:1, day:'02', dow:'Tue', date:'2026-10-27', time:'08:30–10:30', name:'HongYe Factory', detail:'No. 21 Liumaiwan Rd', contact:'Troy', phone:'+86 138 1547 5565'},
- {id:2, day:'02', dow:'Tue', date:'2026-10-27', time:'10:30–12:00', name:'Sachsen Furnaces', detail:'At HongYe office · Spec S12-R3'},
- {id:3, day:'02', dow:'Tue', date:'2026-10-27', time:'13:30–16:00', name:'Dingsheng Aluminium', detail:'Jingkou Park · 100-mill plant'},
- {id:4, day:'02', dow:'Tue', date:'2026-10-27', time:'16:15–18:00', name:'China Energy Foil', detail:'Battery foil cleanroom'},
- {id:5, day:'03', dow:'Wed', date:'2026-10-28', time:'09:15–11:30', name:'Curve Roll Grinder', detail:'Changzhou · Spec S09 & S10'},
- {id:6, day:'03', dow:'Wed', date:'2026-10-28', time:'13:30–15:30', name:'Longray Furnaces', detail:'Suzhou', contact:'Zhang', phone:'+86 189 5110 8961'},
- {id:7, day:'03', dow:'Wed', date:'2026-10-28', time:'18:30–20:00', name:'Shanghai Fronject', detail:'At Primus Hotel · OMR + ROR S13'},
- {id:8, day:'04', dow:'Thu', date:'2026-10-29', time:'13:35–14:30', name:'Chinalco Foil Plant', detail:'Tour plant first · leave by 14:30'},
- {id:9, day:'04', dow:'Thu', date:'2026-10-29', time:'14:45–15:35', name:'CNPT Luoyang HQ', detail:'Leave 15:35 sharp for the station', contact:'Wang', phone:'+86 139 3880 4883'},
- {id:10,day:'05', dow:'Fri', date:'2026-10-30', time:'08:45–11:00', name:'Zhuoshen Mill Factory', detail:'Zhuozhou', contact:'Tiger', phone:'+86 134 6312 6059'},
- {id:11,day:'05', dow:'Fri', date:'2026-10-30', time:'11:15–12:45', name:'NCA Battery Foil Plant', detail:'Robotic spool & roll handling'},
- {id:12,day:'05', dow:'Fri', date:'2026-10-30', time:'14:00–16:30', name:'NCHM Office & Factory', detail:'Zhuozhou', contact:'Vivien', phone:'+86 136 6130 3116'},
+ {id:1, day:'02', dow:'Tue', date:'2026-10-27', time:'08:30–10:30', name:'HongYe Factory', place:'Zhenjiang', detail:'No. 21 Liumaiwan Rd', contact:'Troy', phone:'+86 138 1547 5565'},
+ {id:2, day:'02', dow:'Tue', date:'2026-10-27', time:'10:30–12:00', name:'Sachsen Furnaces', place:'Zhenjiang', detail:'At HongYe office · Spec S12-R3'},
+ {id:3, day:'02', dow:'Tue', date:'2026-10-27', time:'13:30–16:00', name:'Dingsheng Aluminium', place:'Zhenjiang', detail:'Jingkou Park · 100-mill plant'},
+ {id:4, day:'02', dow:'Tue', date:'2026-10-27', time:'16:15–18:00', name:'China Energy Foil', place:'Zhenjiang', detail:'Battery foil cleanroom'},
+ {id:5, day:'03', dow:'Wed', date:'2026-10-28', time:'09:15–11:30', name:'Curve Roll Grinder', place:'Changzhou', detail:'Changzhou · Spec S09 & S10'},
+ {id:6, day:'03', dow:'Wed', date:'2026-10-28', time:'13:30–15:30', name:'Longray Furnaces', place:'Suzhou', detail:'Suzhou', contact:'Zhang', phone:'+86 189 5110 8961'},
+ {id:7, day:'03', dow:'Wed', date:'2026-10-28', time:'18:30–20:00', name:'Shanghai Fronject', place:'Shanghai', detail:'At Primus Hotel · OMR + ROR S13'},
+ {id:8, day:'04', dow:'Thu', date:'2026-10-29', time:'13:35–14:30', name:'Chinalco Foil Plant', place:'Luoyang', cancelled:true, detail:'Cancelled'},
+ {id:9, day:'04', dow:'Thu', date:'2026-10-29', time:'14:45–15:35', name:'CNPT Luoyang HQ', place:'Luoyang', detail:'Leave 15:35 sharp for the station', contact:'Wang', phone:'+86 139 3880 4883'},
+ {id:10,day:'05', dow:'Fri', date:'2026-10-30', time:'08:45–11:00', name:'Zhuoshen Mill Factory', place:'Zhuozhou', detail:'Zhuozhou', contact:'Tiger', phone:'+86 134 6312 6059'},
+ {id:11,day:'05', dow:'Fri', date:'2026-10-30', time:'11:15–12:45', name:'NCA Battery Foil Plant', place:'Zhuozhou', detail:'Robotic spool & roll handling'},
+ {id:12,day:'05', dow:'Fri', date:'2026-10-30', time:'14:00–16:30', name:'NCHM Office & Factory', place:'Zhuozhou', detail:'Zhuozhou', contact:'Vivien', phone:'+86 136 6130 3116'},
 ];
 const DAYLABEL = {'02':'Tue 27 Oct · Zhenjiang','03':'Wed 28 Oct · Changzhou → Suzhou → Shanghai','04':'Thu 29 Oct · Luoyang','05':'Fri 30 Oct · Zhuozhou'};
 const TAGS = ['Price','Spec','Lead time','MOQ','Sample','Follow-up','Question','Important'];
@@ -1071,7 +1071,7 @@ function reportScope(scope){
   const day = scope.startsWith('day') ? scope.slice(3) : null;
   const ms = day ? MEETINGS.filter(m => m.day === day) : MEETINGS;
   const facts = ms.map(visitFacts);
-  const title = day ? `Day report · ${DAYLABEL[day]}` : 'Trip report · China foil-mill tour, 27–30 Oct 2026';
+  const title = day ? `Daily report · ${DAYLABEL[day]}` : 'Trip report · China foil-mill tour, 27–30 Oct 2026';
   const file = day ? `MillNotes_Day${day}_${ms[0].dow}${ms[0].date.slice(8)}Oct_${user || ''}.md` : `MillNotes_TripReport_${user || ''}.md`;
   return {day, ms, facts, title, file};
 }
@@ -1306,6 +1306,25 @@ ol.q li::before{content:counter(q);position:absolute;left:0;top:8px;width:22px;h
 .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .gallery figure{margin:0;break-inside:avoid}.gallery img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:#F3ECE6}
 .gallery figcaption{font-size:11px;color:var(--mute);margin-top:4px}
+.cov{position:relative;margin-top:14px;font-size:13px;color:rgba(255,255,255,.85)}
+.brief1 h3{font-size:13px;margin:16px 0 6px;color:var(--ink)}
+.basis{background:var(--tint);border-radius:10px;padding:10px 14px;margin-bottom:10px}.basis ul{margin:4px 0 0;padding-left:18px}
+.lab{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}.lab.ok{color:var(--mint)}.lab.warn{color:#B3261E}
+.verdict{font-size:15.5px;line-height:1.5;margin:6px 0 4px}
+.t2{width:100%;border-collapse:collapse;font-size:13px}.t2 th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);padding:6px 8px;border-bottom:1.5px solid var(--line)}
+.t2 td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}.t2 tr{break-inside:avoid}
+.scard{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 12px}.scard .sch,.scard .sc2 > div,.kv2 dt,.kv2 dd{break-inside:avoid}.scard .sch{break-after:avoid}
+section > h2{break-after:avoid}.scard.ref{background:var(--tint)}
+.sch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}.sch h3{margin:0;font-size:16px}.sch .when{font-size:11.5px;color:var(--mute)}
+.scard p{margin:6px 0}.who1{color:var(--ink2);font-size:13px}.more{font-size:11.5px;color:var(--mute);margin-top:8px!important}
+.sc2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0}.sc2 ul{margin:4px 0 0;padding-left:18px}.sc2 li{margin:2px 0}
+.kv2{display:grid;grid-template-columns:92px 1fr;gap:4px 12px;margin:8px 0 0;font-size:13.5px}.kv2 dt{font-weight:700;color:var(--ink2)}.kv2 dd{margin:0}.kv2 ul{margin:0;padding-left:18px}
+.gl dl{display:grid;grid-template-columns:160px 1fr;gap:4px 12px;font-size:12.5px}.gl dt{font-weight:700}.gl dd{margin:0;color:var(--ink2)}
+.budget{background:#FFF3F0;border-left:4px solid #B3261E;border-radius:4px 10px 10px 4px;padding:8px 12px;margin:10px 0;font-size:13.5px}
+.keep{break-inside:avoid}
+.appx{margin-top:28px;padding-top:14px;border-top:3px solid var(--line);break-before:page}.appx .ah{color:var(--mute)}
+@media print{.gl dl{grid-template-columns:120px 1fr 120px 1fr;font-size:11px}}
+@media (max-width:560px){.sc2{grid-template-columns:1fr}.kv2{grid-template-columns:1fr}.gl dl{grid-template-columns:1fr}}
 .slide{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;break-inside:avoid}
 .slide .sh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;margin-bottom:6px}.slide .sh .m{font-size:11px;color:var(--mute)}
 .slide .kind{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--tint);border-radius:999px;padding:2px 8px}
@@ -1325,9 +1344,30 @@ footer{break-inside:avoid;margin:6px 36px 0;padding:14px 0 26px;border-top:1px s
 @media (max-width:620px){body{background:#fff}.page{box-shadow:none}.cover{padding:24px 18px 20px}.cover h1{font-size:27px}main{padding:20px 18px 4px}footer{margin:6px 18px 0}.stats{grid-template-columns:repeat(2,1fr)}.gallery{grid-template-columns:repeat(2,1fr)}.tl>li{grid-template-columns:44px 1fr}.tl>li::before{left:50px}.kv{grid-template-columns:90px 1fr}}
 @media print{body{background:#fff;font-size:12.5px}.page{max-width:none;box-shadow:none}.cover{border-radius:0}main{padding:22px 4mm 0}footer{margin:0 4mm}section{margin-bottom:20px}h2{break-after:avoid}.matrix{overflow:visible}.matrix table{min-width:0}}
 `;
-const FACT_KEYS = [['prices','Prices'],['specs','Specs'],['lead_times','Lead times'],['moq','MOQ'],['samples','Samples']];
-const TAG_FACT = {'Price':'prices','Spec':'specs','Lead time':'lead_times','MOQ':'moq','Sample':'samples'};
-const rTxt = x => typeof x === 'string' ? x : (x && (x.text || x.what)) || '';
+const FACT_KEYS = [['prices','Prices and terms'],['lead_times','Lead times'],['specs','Key figures']];
+const TAG_FACT = {'Price':'prices','Spec':'specs','Lead time':'lead_times'};
+const rRaw = x => typeof x === 'string' ? x : (x && (x.text || x.what)) || '';
+/* Reports are read by people who were not there: no timestamps, recording/photo ids, "part 2", "(confirmed by …)", "as heard". */
+function rClean(t){
+  return String(t || '')
+    .replace(/^Slide:\s*/, '')
+    .replace(/\s*\[(?:[^\]]*?\d{1,2}:\d{2}[^\]]*?|part \d[^\]]*|team, aside)\]/gi, '')
+    .replace(/\s*\((?:photos?|recordings?|matches|per|see)\b[^)]*\)/gi, '')
+    .replace(/\s*\([^()]*\b(?:confirmed|answered|checked|corrected) (?:by|in|on|against)\b[^()]*\)/gi, '')
+    .replace(/\s*[;,]?\s*\b(?:confirmed|answered) by (?:Sharoon|Naveed)\b/gi, '')
+    .replace(/\s*\((?:as heard|as spoken|heard as[^)]*|unclear)\)/gi, '')
+    .replace(/,?\s*as heard\b/gi, '')
+    .replace(/\b[0-9a-z]{8}-\d{1,4}(?:-q\d+)?\b/g, '')
+    .replace(/\s*\[\s*[,;]?\s*\]/g, '').replace(/\(\s*[,;]?\s*\)/g, '')
+    .replace(/\s{2,}/g, ' ').replace(/\s+([,.;:])/g, '$1').trim();
+}
+const rTxt = x => rClean(rRaw(x)).replace(/\s*\(meeting tomorrow\)/i, '');
+// app housekeeping never belongs in a report
+const rHousekeeping = t => /re-?tag|misfiled|filed (?:here|under)|tagged to this visit|which phone|stopped capturing|stopped recording|in the app|clarify|Butterfly Notes|postcode|address plate|\bmeet [^.]* at \d{1,2}[:.]\d{2}|leave by|leave \d|for the station|garbled|as spoken|gate (?:sign|photo)|signage photo/i.test(t);
+const tripDoc = () => results['results/trip.json'] || null;
+const visitCard = id => ((tripDoc() || {}).cards || {})[id] || ((visitBrief(id) || {}).card) || null;
+const dayExec = date => ((tripDoc() || {}).days || {})[date] || null;
+const shortDate = m => `${m.dow} ${Number(m.date.slice(8))} Oct`;
 const whoChip = w => w ? `<span class="who ${esc(String(w).split(' ')[0])}">${esc(w)}</span>` : '';
 const rNameOf = n => n.remote ? (n.owner || n.by || 'Other phone') : (n.by || user || '');
 /* Everything known about one visit, from both phones and Claude's results. */
@@ -1343,37 +1383,63 @@ function visitModel(id){
   // facts: Claude's brief first, then anything the team tagged on site
   const facts = {}; for (const [k] of FACT_KEYS) facts[k] = [...((brief && brief[k]) || []).map(x => ({text: rTxt(x), src: 'Claude'}))];
   for (const t of typed) for (const tg of t.tags) if (TAG_FACT[tg] && t.text) facts[TAG_FACT[tg]].push({text: t.text, src: t.by});
-  for (const r of recs) if (r.ai) for (const [k] of FACT_KEYS) for (const x of (r.ai[k] || [])) if (!facts[k].some(y => y.text === rTxt(x))) facts[k].push({text: rTxt(x), src: 'Claude'});
-  const follow = [...((brief && brief.follow_ups) || []).map(x => ({what: rTxt(x), owner: x.owner || ''}))];
+  if (!brief) for (const r of recs) if (r.ai) for (const [k] of FACT_KEYS) for (const x of (r.ai[k] || [])) if (!facts[k].some(y => y.text === rTxt(x))) facts[k].push({text: rTxt(x), src: 'Claude'});
+  for (const [k] of FACT_KEYS) facts[k] = facts[k].filter((x, i, a) => x.text && !rHousekeeping(x.text) && a.findIndex(y => y.text === x.text) === i);
+  const follow = [...((brief && brief.follow_ups) || []).map(x => ({what: rTxt(x), owner: x.owner || ''}))].filter(f => f.what && !rHousekeeping(f.what));
   for (const t of typed) if (t.tags.includes('Follow-up') && t.text) follow.push({what: t.text, owner: t.by, noted: true});
-  const questions = [...((brief && brief.questions) || []).map(rTxt)];
+  const questions = [...((brief && brief.questions) || []).map(rTxt)].filter(q => q && !rHousekeeping(q));
   for (const t of typed) if (t.tags.includes('Question') && t.text && !questions.includes(t.text)) questions.push(`${t.text} (${t.by})`);
   const started = new Date(`${m.date}T${m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now();
   const empty = !notes.length && !sums.length && !ins.length && !brief;
   return {m, ins, sums, brief, recs, typed, photos, videos, facts, follow, questions, started, empty};
 }
-const rFoot = (kind) => `<footer><span>Project Butterfly · China foil-mill supplier tour · ${esc(kind)}</span><span>Generated ${esc(fmtDateTime(Date.now()))} from ${esc(user || 'this phone')}'s app${remoteNotes.length ? ' + the other phone' : ''} · Butterfly Notes ${APP_VERSION}</span><span><span class="ai">✦ Claude</span> marks AI-drafted content from recordings: check figures before relying on them.</span></footer>`;
+const rFoot = (kind) => `<footer><span>Project Butterfly · China foil-mill supplier tour · ${esc(kind)} · ${esc(fmtDateTime(Date.now()))}</span><span>Prepared from Sharoon's and Naveed's meeting recordings, photos and notes. Figures marked “to confirm” must be checked with the supplier in writing.</span></footer>`;
 const rDoc = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${RPT_CSS}</style></head><body><div class="page">${body}</div></body></html>`;
 function rFacts(facts){
   const have = FACT_KEYS.filter(([k]) => facts[k].length), gaps = FACT_KEYS.filter(([k]) => !facts[k].length);
   return (have.length ? `<div class="facts">${have.map(([k, label]) => `<div class="fact"><div class="k"><i></i>${label}</div><ul>${facts[k].map(x => `<li>${esc(x.text)}${x.src && x.src !== 'Claude' ? ` <span class="src">· ${esc(x.src)}</span>` : ''}</li>`).join('')}</ul></div>`).join('')}</div>` : '')
-    + (gaps.length ? `<div class="gaps"><b>Not captured yet</b>${gaps.map(([, l]) => `<span>${l}</span>`).join('')}<em>ask the supplier</em></div>` : '');
+    + (gaps.filter(([k]) => k !== 'specs').length ? `<div class="gaps"><b>Not given yet</b>${gaps.filter(([k]) => k !== 'specs').map(([, l]) => `<span>${l}</span>`).join('')}<em>ask the supplier</em></div>` : '');
 }
 function rActions(rows, withSupplier){
   if (!rows.length) return `<p class="empty-note">No follow-ups recorded.</p>`;
   return `<table><thead><tr><th style="width:24px"></th>${withSupplier ? '<th>Supplier</th>' : ''}<th>Action</th><th style="width:96px">Owner</th></tr></thead><tbody>${rows.map(r => `<tr><td><span class="box"></span></td>${withSupplier ? `<td><b>${esc(r.sup)}</b></td>` : ''}<td>${esc(r.what)}${r.noted ? ' <span class="src">· tagged on site</span>' : ''}</td><td>${whoChip(r.owner) || '<span class="src">—</span>'}</td></tr>`).join('')}</tbody></table>`;
+}
+/* One supplier on one card: the same fixed shape for every supplier so they compare at a glance. */
+function rCard(id, opts = {}){
+  const m = MEETINGS.find(x => x.id === id), c = visitCard(id), V = visitModel(id), b = V.brief || {};
+  const when = V.ins.length ? `${shortDate(m)} · arrived ${fmtTime(V.ins[0].at)}` : shortDate(m);
+  if (!c) return `<div class="scard"><div class="sch"><h3>${esc(m.name)}</h3><span class="when">${esc(when)}</span></div>${b.headline ? `<p>${esc(rTxt(b.headline))}</p>` : ''}${b.our_take ? `<p><b>Our take:</b> ${esc(rTxt(b.our_take))}</p>` : ''}</div>`;
+  const li = a => (a || []).filter(Boolean).map(x => `<li>${esc(rTxt(x))}</li>`).join('');
+  if (c.kind === 'reference') return `<div class="scard ref"><div class="sch"><h3>${esc(m.name)}</h3><span class="when">${esc(when)}</span></div>${c.who ? `<p class="who1">${esc(c.who)}</p>` : ''}${c.offered ? `<p>${esc(c.offered)}</p>` : ''}${c.our_take ? `<p><b>What we took away:</b> ${esc(c.our_take)}</p>` : ''}</div>`;
+  return `<div class="scard"><div class="sch"><h3>${esc(m.name)}</h3><span class="when">${esc(when)}</span></div>
+    ${c.who ? `<p class="who1">${esc(c.who)}</p>` : ''}${c.offered ? `<p>${esc(c.offered)}</p>` : ''}
+    ${(c.strengths || []).length || (c.concerns || []).length ? `<div class="sc2"><div><div class="lab ok">Strengths</div><ul>${li(c.strengths)}</ul></div><div><div class="lab warn">Concerns</div><ul>${li(c.concerns)}</ul></div></div>` : ''}
+    <dl class="kv2"><dt>Price</dt><dd>${esc(c.price || 'Not quoted yet')}</dd><dt>Lead time</dt><dd>${esc(c.lead_time || 'Not given')}</dd>${c.our_take && !/^no (team )?(view|summary)/i.test(c.our_take) ? `<dt>Our take</dt><dd>${esc(c.our_take)}</dd>` : ''}${(c.need || []).length ? `<dt>We need</dt><dd><ul>${li(c.need)}</ul></dd>` : ''}</dl>
+    ${opts.link ? `<p class="more">Full details: visit report ${pad2(id)}</p>` : ''}</div>`;
+}
+const rTable = (head, rows) => rows.length ? `<table class="t2"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '';
+function rGlossary(text, gl){
+  const used = (gl || []).filter(g => new RegExp(`\\b${g.term.split(/[\s(/]/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(text));
+  return used.length ? `<section class="gl"><h2>Terms used</h2><dl>${used.map(g => `<dt>${esc(g.term)}</dt><dd>${esc(g.plain)}</dd>`).join('')}</dl></section>` : '';
+}
+function rCoverage(ms){
+  const done = [], cancelled = [], ahead = [];
+  const missed = [];
+  for (const m of ms){ const V = visitModel(m.id); if (m.cancelled) cancelled.push(m); else if (!V.empty) done.push(m); else if (V.started) missed.push(m); else ahead.push(m); }
+  const names = a => a.map(m => m.name).join(', ');
+  return `${done.length} of ${ms.length - cancelled.length} visits covered${cancelled.length ? ` · ${esc(names(cancelled))} cancelled` : ''}${missed.length ? ` · nothing recorded at ${esc(names(missed))}` : ''}${ahead.length ? ` · not yet in this report: ${esc(names(ahead))} (${esc([...new Set(ahead.map(m => shortDate(m)))].join(', '))})` : ''}`;
 }
 function rViews(V){
   const views = [];
   if (V.brief && V.brief.our_take) views.push({by: 'Team', text: V.brief.our_take, ai: true});
   for (const s of V.sums) views.push({by: s.by, text: s.text});
   if (!views.length) return '';
-  return `<section><h2>Team perspective</h2><div class="views">${views.map(v => `<div class="view"><div class="by"><span class="av ${esc(v.by)}">${v.ai ? '✦' : esc((v.by || '?')[0])}</span>${v.ai ? 'Our take, from voice notes' : `${esc(v.by)}'s summary`}${v.ai ? ' <span class="ai">✦ Claude</span>' : ''}</div><p>${esc(v.text)}</p></div>`).join('')}</div></section>`;
+  return `<section><h2>Team perspective</h2><div class="views">${views.map(v => `<div class="view"><div class="by"><span class="av ${esc(v.by)}">${v.ai ? '✦' : esc((v.by || '?')[0])}</span>${v.ai ? 'Our take, from voice notes' : `${esc(v.by)}'s summary`}${v.ai ? ' <span class="ai">✦ Claude</span>' : ''}</div><p>${esc(rTxt(v.text))}</p></div>`).join('')}</div></section>`;
 }
 function rTimeline(V, photoSrc){
   const items = [
     ...V.recs.map(r => ({at: r.at, html: `<li class="${r.kind === 'memo' ? 'memo' : 'meet'}"><time>${fmtTime(r.at)}</time><div class="body"><span class="kind">${r.kind === 'memo' ? 'Voice note' : 'Meeting'}</span>${whoChip(r.by)} <span class="m">${fmtHours(r.dur)}${r.marks.length ? ` · ${plural(r.marks.length, 'tag')}` : ''}</span>
-      ${r.ai ? `<div class="h">${esc(r.ai.headline || '')} <span class="ai">✦ Claude</span></div>${(r.ai.bullets || []).length ? `<ul>${r.ai.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>` : ''}` : `<div class="m" style="margin-top:4px">Transcript and summary pending</div>`}
+      ${r.ai ? `<div class="h">${esc(rTxt(r.ai.headline || ''))}</div>${(r.ai.bullets || []).filter(b => !rHousekeeping(rRaw(b))).length ? `<ul>${r.ai.bullets.filter(b => !rHousekeeping(rRaw(b))).map(b => `<li>${esc(rTxt(b))}</li>`).join('')}</ul>` : ''}` : `<div class="m" style="margin-top:4px">Transcript and summary pending</div>`}
       ${r.caption ? `<div class="m" style="margin-top:4px">Caption: ${esc(r.caption)}</div>` : ''}</div></li>`})),
     ...V.typed.map(t => ({at: t.at, html: `<li class="note"><time>${fmtTime(t.at)}</time><div class="body"><span class="kind">Note</span>${whoChip(t.by)} ${t.tags.map(g => `<span class="tag">${esc(g)}</span>`).join('')}<div style="margin-top:4px">${esc(t.text) || '<span class="m">(tag only)</span>'}</div></div></li>`})),
     ...(photoSrc ? [] : V.photos.map(p => ({at: p.createdAt, html: `<li class="photo"><time>${fmtTime(p.createdAt)}</time><div class="body"><span class="kind" style="background:var(--mintbg);color:var(--mint)">Photo</span>${whoChip(rNameOf(p))}${p.text ? ` <span class="m">${esc(p.text)}</span>` : ''}${(m => m && m.quote ? ` <span class="m">at ${fmtAt(m.t, m.rec.duration)}: “${esc(m.quote.slice(0, 140))}”</span>` : '')(photoMoment(p))}</div></li>`})))
@@ -1383,10 +1449,10 @@ function rTimeline(V, photoSrc){
 function rSlides(V){
   const read = V.photos.map(p => ({p, x: photoRead(p)})).filter(o => o.x && o.x.relevant !== false && ((o.x.figures || []).length || o.x.diagram));
   if (!read.length) return '';
-  return `<section><h2>From the slides and diagrams <span class="n">${read.length}</span></h2><p class="empty-note" style="font-style:normal">Read by Claude from photos taken during the visit; [?] marks characters that could not be read with certainty.</p>
-    ${read.map(({p, x}) => { const m = photoMoment(p);
-      return `<div class="slide"><div class="sh"><span class="kind">${esc(PKIND[x.kind] || 'Photo')}</span><b>${esc(x.title || '')}</b><span class="m">${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}${m ? ` · ${fmtAt(m.t, m.rec.duration)} in the recording` : ''}</span></div>
-        ${(x.figures || []).length ? `<ul>${x.figures.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}${x.diagram ? `<p><b>Diagram:</b> ${esc(x.diagram)}</p>` : ''}</div>`; }).join('')}</section>`;
+  return `<section><h2>From the slides and diagrams <span class="n">${read.length}</span></h2><p class="empty-note" style="font-style:normal">Read from photos of the supplier's slides and drawings; [?] marks characters too small to read for certain.</p>
+    ${read.map(({p, x}) => {
+      return `<div class="slide"><div class="sh"><span class="kind">${esc(PKIND[x.kind] || 'Photo')}</span><b>${esc(x.title || '')}</b><span class="m">${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}</span></div>
+        ${(x.figures || []).length ? `<ul>${x.figures.slice(0, 6).map(f => `<li>${esc(rClean(f))}</li>`).join('')}${x.figures.length > 6 ? `<li class="src">+ ${x.figures.length - 6} more on the slide</li>` : ''}</ul>` : ''}${x.diagram ? `<p><b>Diagram:</b> ${esc(rClean(x.diagram))}</p>` : ''}</div>`; }).join('')}</section>`;
 }
 function rGallery(V, photoSrc){
   if (!photoSrc) return '';
@@ -1397,43 +1463,73 @@ function rGallery(V, photoSrc){
 function visitReportHtml(id, photoSrc){
   const V = visitModel(id), m = V.m, b = V.brief;
   const counts = [V.recs.filter(r => r.kind !== 'memo').length && plural(V.recs.filter(r => r.kind !== 'memo').length, 'meeting recording'), V.recs.filter(r => r.kind === 'memo').length && plural(V.recs.filter(r => r.kind === 'memo').length, 'voice note'), V.photos.length && plural(V.photos.length, 'photo'), V.videos.length && plural(V.videos.length, 'video'), V.typed.length && plural(V.typed.length, 'typed note')].filter(Boolean).join(' · ') || 'Nothing captured yet';
-  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · Supplier visit</span><span class="doc">Visit ${pad2(id)}</span></div>
-    <h1>${esc(m.name)}</h1><div class="sub">${esc(m.detail)}</div>
-    <div class="meta"><div><span>Date</span>${esc(m.dow)} ${Number(m.date.slice(8))} Oct 2026</div><div><span>Itinerary slot</span>${esc(m.time)} China time</div>
-      <div><span>Checked in</span>${V.ins.length ? `${fmtTime(V.ins[0].at)} · ${esc(V.ins[0].by || '')}` : 'Not checked in'}</div>${m.contact ? `<div><span>Contact</span>${esc(m.contact)}${m.phone ? ` · ${esc(m.phone)}` : ''}</div>` : ''}<div><span>Captured</span>${esc(counts)}</div></div></header><main>`;
-  h += `<section><h2>Bottom line</h2>${b && b.headline ? `<div class="bluf"><span class="ai">✦ Claude</span><div class="head">${esc(b.headline)}</div>${b.offer ? `<p>${esc(b.offer)}</p>` : ''}${(b.bullets || []).length ? `<ul>${b.bullets.map(x => `<li>${esc(rTxt(x))}</li>`).join('')}</ul>` : ''}</div>`
+  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${(visitCard(id) || {}).kind === 'reference' ? 'Reference plant visit' : 'Supplier visit'}</span><span class="doc">Visit ${pad2(id)}</span></div>
+    <h1>${esc(m.name)}</h1><div class="sub">${esc(m.place || '')}${m.cancelled ? ' · Cancelled' : ''}</div>
+    <div class="meta"><div><span>Date</span>${esc(m.dow)} ${Number(m.date.slice(8))} Oct 2026</div><div><span>Arrived</span>${V.ins.length ? `${fmtTime(V.ins[0].at)} China time` : 'Not recorded'}</div>
+      ${m.contact ? `<div><span>Contact</span>${esc(m.contact)}</div>` : ''}<div><span>Source material</span>${esc(counts)}</div></div></header><main>`;
+  h += visitCard(id) ? `<section class="brief1"><h2>At a glance</h2>${rCard(id)}</section>` : '';
+  h += visitCard(id) ? '' : `<section><h2>Bottom line</h2>${b && b.headline ? `<div class="bluf"><span class="ai">✦ Claude</span><div class="head">${esc(rTxt(b.headline))}</div>${b.offer ? `<p>${esc(rTxt(b.offer))}</p>` : ''}${(b.bullets || []).length ? `<ul>${b.bullets.map(x => `<li>${esc(rTxt(x))}</li>`).join('')}</ul>` : ''}</div>`
     : V.sums.length ? `<div class="bluf"><div class="head">${esc(V.sums[0].text.split('\n')[0])}</div><p>${esc(V.sums[0].by)}'s summary</p></div>` : `<p class="empty-note">No brief yet: it appears after the recordings and notes are processed.</p>`}</section>`;
-  h += `<section><h2>Key commercial facts</h2>${rFacts(V.facts)}</section>`;
-  h += `<section><h2>Actions <span class="n">${V.follow.length}</span></h2>${rActions(V.follow)}</section>`;
-  if (V.questions.length) h += `<section><h2>Open questions <span class="n">${V.questions.length}</span></h2><ol class="q">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
+  const isRef = (visitCard(id) || {}).kind === 'reference', TOP = 8;
+  const top = {}, rest = []; for (const [k] of FACT_KEYS){ const clean = V.facts[k].filter(x => !rHousekeeping(x.text)); top[k] = k === 'specs' ? clean.slice(0, TOP) : clean; if (k === 'specs') rest.push(...clean.slice(TOP)); }
+  if (!isRef) h += `<section><h2>Facts we have</h2>${rFacts(top)}</section>`;
+  h += `<section><h2>Follow-ups <span class="n">${V.follow.length}</span></h2>${rActions(V.follow)}</section>`;
+  if (V.questions.length) h += `<section><h2>Still to confirm <span class="n">${V.questions.length}</span></h2><ol class="q">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
+  h += `<div class="appx"><h2 class="ah">Appendix: source material</h2><p class="empty-note" style="font-style:normal">What was on the slides and diagrams, the photos, and the record of the visit as captured. Read the sections above first.</p></div>`;
+  if (rest.length) h += `<section><h2>All other figures noted <span class="n">${rest.length}</span></h2><ul>${rest.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></section>`;
   h += rSlides(V) + rViews(V) + rGallery(V, photoSrc) + rTimeline(V, photoSrc);
   return rDoc(`Visit ${pad2(id)} · ${m.name}`, h + `</main>` + rFoot(`Visit report ${pad2(id)}`));
 }
 function scopeReportHtml(scope){
-  const R = reportScope(scope), Vs = R.ms.map(m => visitModel(m.id)), t = totals(R.facts);
-  const done = Vs.filter(V => !V.empty), upcoming = Vs.filter(V => V.empty);
-  const dayB = R.day ? dayBrief(R.ms[0].date) : null;
-  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${R.day ? 'Daily report' : 'Trip report'}</span><span class="doc">${R.day ? `Day ${Number(R.day) - 1}` : '27–30 Oct 2026'}</span></div>
-    <h1>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill supplier tour')}</h1><div class="sub">${R.day ? `${plural(R.ms.length, 'scheduled visit')}: ${esc(R.ms.map(m => m.name).join(', '))}` : 'Sharoon & Naveed · 12 suppliers · Zhenjiang, Changzhou, Suzhou, Shanghai, Luoyang, Zhuozhou'}</div>
-    <div class="stats"><div><b>${done.length}/${Vs.length}</b><span>visits with notes</span></div><div><b>${t.meeting}</b><span>meeting recordings${t.recSecs ? ` · ${fmtHours(t.recSecs)}` : ''}</span></div><div><b>${t.memo}</b><span>voice notes</span></div><div><b>${t.photo}</b><span>photos</span></div></div></header><main>`;
-  if (dayB) h += `<section><h2>Bottom line</h2><div class="bluf"><span class="ai">✦ Claude</span><div class="head">${esc(dayB.headline || '')}</div>${(dayB.highlights || []).length ? `<ul>${dayB.highlights.map(x => `<li>${esc(rTxt(x))}</li>`).join('')}</ul>` : ''}</div></section>`;
-  else if (!R.day){ const ds = [...new Set(MEETINGS.map(m => m.date))].map(d => [d, dayBrief(d)]).filter(x => x[1] && x[1].headline);
-    if (ds.length) h += `<section><h2>Day by day</h2><div class="bluf"><span class="ai">✦ Claude</span><ul style="margin-top:6px">${ds.map(([d, b]) => `<li><b>${esc(MEETINGS.find(m => m.date === d).dow)} ${Number(d.slice(8))} Oct:</b> ${esc(b.headline)}</li>`).join('')}</ul></div></section>`; }
-  const dec = [...((dayB && dayB.decisions_needed) || [])]; if (!R.day) [...new Set(MEETINGS.map(m => m.date))].forEach(d => (((dayBrief(d) || {}).decisions_needed) || []).forEach(x => dec.push(x)));
-  if (dec.length) h += `<section><h2>Decisions needed <span class="n">${dec.length}</span></h2><ol class="q">${dec.map(q => `<li>${esc(rTxt(q))}</li>`).join('')}</ol></section>`;
-  if (done.length) h += `<section><h2>Supplier comparison</h2><div class="matrix"><table><thead><tr><th>Supplier</th>${FACT_KEYS.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead><tbody>${done.map(V => `<tr><td><b>${pad2(V.m.id)} ${esc(V.m.name)}</b></td>${FACT_KEYS.map(([k]) => V.facts[k].length ? `<td>${V.facts[k].map(x => esc(x.text)).join('<br>')}</td>` : `<td class="gap">—</td>`).join('')}</tr>`).join('')}</tbody></table></div><p class="src" style="margin-top:6px">— = not captured yet: a gap to close with the supplier.</p></section>`;
-  const acts = done.flatMap(V => V.follow.map(f => ({...f, sup: `${pad2(V.m.id)} ${V.m.name}`})));
-  const owners = [...new Set(acts.map(a => a.owner || ''))].sort((a,b) => (a === '') - (b === '') || a.localeCompare(b));
-  h += `<section><h2>Actions <span class="n">${acts.length}</span></h2>${acts.length ? owners.map(o => `<div style="margin:6px 0 4px">${whoChip(o || 'Unassigned')}</div>${rActions(acts.filter(a => (a.owner || '') === o), true)}`).join('<div style="height:10px"></div>') : rActions([])}</section>`;
-  const qs = done.flatMap(V => V.questions.map(q => ({q, sup: `${pad2(V.m.id)} ${V.m.name}`})));
-  if (qs.length) h += `<section><h2>Open questions <span class="n">${qs.length}</span></h2><ol class="q">${qs.map(x => `<li><b>${esc(x.sup)}:</b> ${esc(x.q)}</li>`).join('')}</ol></section>`;
-  h += `<section><h2>Visits</h2>${done.length ? done.map(V => { const b = V.brief;
-    return `<div class="visit"><div class="top"><span class="num">${pad2(V.m.id)}</span><h3>${esc(V.m.name)}</h3><span class="time">${esc(V.m.dow)} ${Number(V.m.date.slice(8))} Oct · ${esc(V.m.time)}</span></div>
-      <div>${V.ins.length ? `<span class="chip ok">✓ Checked in ${fmtTime(V.ins[0].at)}</span>` : '<span class="chip">Not checked in</span>'}${V.recs.length ? `<span class="chip">${plural(V.recs.length, 'recording')}</span>` : ''}${V.photos.length ? `<span class="chip">${plural(V.photos.length, 'photo')}</span>` : ''}${!V.sums.length && V.started ? '<span class="chip warn">No summary typed</span>' : ''}</div>
-      ${b && b.headline ? `<div class="hl">${esc(b.headline)} <span class="ai">✦ Claude</span></div>` : ''}${b && b.offer ? `<p>${esc(b.offer)}</p>` : ''}
-      ${V.sums.map(s => `<p><b>${esc(s.by)}:</b> ${esc(s.text)}</p>`).join('')}
-      ${b && b.our_take ? `<dl class="kv"><dt>Our take</dt><dd>${esc(b.our_take)}</dd></dl>` : ''}</div>`; }).join('') : '<p class="empty-note">No visits recorded yet.</p>'}
-    ${upcoming.length ? `<div style="margin-top:8px"><div class="src" style="margin-bottom:6px;font-weight:700">Not yet visited</div><div class="upcoming">${upcoming.map(V => `<span>${pad2(V.m.id)} ${esc(V.m.name)} · ${esc(V.m.dow)} ${esc(V.m.time)}</span>`).join('')}</div></div>` : ''}</section>`;
+  const R = reportScope(scope), T = (tripDoc() || {}).trip || null;
+  const done = R.ms.filter(m => !visitModel(m.id).empty);
+  const cats = ['Rolling mills', 'Annealing furnaces', 'Roll grinders', 'Oil recovery', 'Plant design'];
+  const catOf = id => (visitCard(id) || {}).category || 'Other suppliers';
+  const isRef = id => (visitCard(id) || {}).kind === 'reference';
+  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${R.day ? 'Daily report' : 'Trip report'}</span><span class="doc">${R.day ? esc(DAYLABEL[R.day].split(' · ')[0]) : '27–30 Oct 2026'}</span></div>
+    <h1>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill supplier tour')}</h1>
+    <div class="sub">${R.day ? esc(R.ms.map(m => m.name).join(' · ')) : 'Sharoon & Naveed · Zhenjiang, Changzhou, Suzhou, Shanghai, Luoyang, Zhuozhou'}</div>
+    <div class="cov">${rCoverage(R.ms)}</div></header><main>`;
+  if (!R.day){
+    if (T){
+      h += `<section class="brief1"><h2>The trip on one page</h2>
+        ${(T.basis || []).length ? `<div class="basis"><div class="lab">What we are planning</div><ul>${T.basis.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
+        ${T.verdict ? `<p class="verdict"><b>Verdict.</b> ${esc(T.verdict)}</p>` : ''}
+        ${T.budget ? `<div class="budget"><div class="lab warn">Cost</div>${esc(T.budget)}</div>` : ''}
+        ${(T.shortlist || []).length ? `<h3>Who is in the running</h3>${rTable(['Equipment', 'Options', 'Where it stands'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}` : ''}
+        ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${rTable(['Decision', 'Options', 'Our leaning', 'Owner', 'Decide by'], T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner || 'To assign'), esc(x.by || 'Not set')]))}` : ''}
+        ${(() => { const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, we = (T.next_steps || []).filter(x => ours.test(x.owner || '')), them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
+          return (we.length ? `<h3>Next steps: we do</h3>${rTable(['Step', 'Owner'], we.map(x => [esc(x.what), esc(x.owner)]))}` : '')
+               + (them.length ? `<h3>Next steps: we chase</h3>${rTable(['Supplier', 'What we are waiting for'], them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what)]))}` : ''); })()}</section>`;
+      if (T.money && ((T.money.known || []).length || (T.money.awaiting || []).length))
+        h += `<section class="keep"><h2>Money and timing</h2><div class="sc2"><div><div class="lab ok">What we have</div><ul>${(T.money.known || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab warn">Still waiting for</div><ul>${(T.money.awaiting || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>`;
+      for (const c of [...cats, 'Other suppliers']){ const ids = done.map(m => m.id).filter(id => !isRef(id) && catOf(id) === c);
+        if (ids.length) h += `<section><h2>${esc(c)}</h2>${ids.map(id => rCard(id, {link: true})).join('')}</section>`; }
+      const refs = done.filter(m => isRef(m.id));
+      if ((T.lessons || []).length) h += `<section class="keep"><h2>What we learned at operating plants</h2><p class="src" style="margin:0 0 6px">${esc(refs.map(m => `${m.name} (${shortDate(m)})`).join(' · '))}</p><ul>${T.lessons.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
+      else if (refs.length) h += `<section><h2>What we learned at operating plants</h2>${refs.map(m => rCard(m.id)).join('')}</section>`;
+      if ((T.open_issues || []).length) h += `<section><h2>Open issues that block decisions</h2>${rTable(['Area', 'Issue'], T.open_issues.map(x => [`<b>${esc(x.area)}</b>`, esc(x.text)]))}</section>`;
+      const textSoFar = h.replace(/<[^>]+>/g, ' ');
+      h += `<div class="appx"><h2 class="ah">Appendix</h2></div>`;
+      if ((T.who || []).length) h += `<section><h2>Who's who</h2>${rTable(['Name', 'Company', 'Role'], T.who.filter(x => !/^(Sharoon|Naveed)$/i.test(x.name)).map(x => [esc(x.name), esc(x.company), esc(x.role)]))}</section>`;
+      h += rGlossary(textSoFar, T.glossary);
+    } else {
+      // no executive summary yet: a short version built from the visit briefs
+      h += `<section><h2>Suppliers</h2>${done.map(m => rCard(m.id, {link: true})).join('')}</section>`;
+    }
+  } else {
+    const dx = dayExec(R.ms[0].date), db = dayBrief(R.ms[0].date) || {};
+    const head = (dx && dx.headline) || rTxt(db.headline || '').replace(/^Day \d+:\s*/, '');
+    const hl = (dx && dx.highlights) || (db.highlights || []).map(rTxt);
+    if (head || hl.length) h += `<section class="brief1"><h2>The day in brief</h2>${head ? `<p class="verdict">${esc(head)}</p>` : ''}${hl.length ? `<ul>${hl.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</section>`;
+    const arrived = m => { const V = visitModel(m.id); return V.ins.length ? V.ins[0].at : new Date(`${m.date}T${m.time.split('–')[0]}:00+08:00`).getTime(); };
+    if (done.length) h += `<section><h2>Visits</h2>${done.slice().sort((a, b) => arrived(a) - arrived(b)).map(m => rCard(m.id, {link: true})).join('')}</section>`;
+    const dec = ((db.decisions_needed || []).map(rTxt)).filter(x => x && !rHousekeeping(x)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 6);
+    if (dec.length) h += `<section><h2>Decisions raised today</h2><ol class="q">${dec.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
+    const acts = done.flatMap(m => visitModel(m.id).follow.map(f => ({...f, sup: m.name}))).slice(0, 10);
+    if (acts.length) h += `<section><h2>Follow-ups from today</h2>${rTable(['Supplier', 'Action', 'Owner'], acts.map(a => [`<b>${esc(a.sup)}</b>`, esc(a.what), esc(a.owner || '')]))}</section>`;
+    if (T) h += rGlossary(h.replace(/<[^>]+>/g, ' '), T.glossary);
+  }
   return {html: rDoc(R.title, h + `</main>` + rFoot(R.day ? 'Daily report' : 'Trip report')), title: R.title, file: R.file.replace(/\.md$/, '.html'), md: reportMarkdown(scope).md};
 }
 /* Photos for the visit report: this phone's from storage, the other phone's from the sync repo when online. Downscaled so the file stays light. */
@@ -2020,7 +2116,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.10';
+const APP_VERSION = '3.11';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
