@@ -27,8 +27,8 @@ async def main():
         await pg.screenshot(path='/tmp/claude-0/t_photos.png', full_page=True)
         await pg.evaluate("openReport('visit', 2)"); await pg.wait_for_timeout(2500)
         html = await pg.evaluate("rpt.html")
-        cap = 'At 2:00 in the meeting recording' in html and 'loading door' in html
-        print('report caption has moment + quote:', cap); ok &= cap
+        cap = '<figure>' in html and 'in the meeting recording' not in html   # shared report: photo shown, no recording timestamps
+        print('report shows photo without recording timestamp:', cap); ok &= cap
         print('page errors:', errs); ok &= not errs; await b.close()
     print('PASS' if ok else 'FAIL')
 asyncio.run(main()); srv.terminate()

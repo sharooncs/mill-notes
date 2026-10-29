@@ -1396,19 +1396,23 @@ function rActions(rows, withSupplier){
 /* One supplier on one card: the same fixed shape for every supplier so they compare at a glance. */
 function rCard(id, opts = {}){
   const m = MEETINGS.find(x => x.id === id), c = visitCard(id), V = visitModel(id), b = V.brief || {};
-  const when = V.ins.length ? `${shortDate(m)} · arrived ${fmtTime(V.ins[0].at)}` : shortDate(m);
+  const when = shortDate(m);
   if (!c) return `<div class="scard"><div class="sch"><h3>${esc(m.name)}</h3><span class="when">${esc(when)}</span></div>${b.headline ? `<p>${esc(rTxt(b.headline))}</p>` : ''}${b.our_take ? `<p><b>Our take:</b> ${esc(rTxt(b.our_take))}</p>` : ''}</div>`;
   const li = a => (a || []).filter(Boolean).map(x => `<li>${esc(rTxt(x))}</li>`).join('');
   if (c.kind === 'reference') return `<div class="scard ref"><div class="sch"><h3>${esc(m.name)}</h3><span class="when">${esc(when)}</span></div>${c.who ? `<p class="who1">${esc(c.who)}</p>` : ''}${c.offered ? `<p>${esc(c.offered)}</p>` : ''}${c.our_take ? `<p><b>What we took away:</b> ${esc(c.our_take)}</p>` : ''}</div>`;
+  if (opts.compact) return `<div class="scard"><div class="sch"><h3>${esc(m.name)}</h3><span class="when">${esc(when)}</span></div>
+    ${c.offered ? `<p>${esc(c.offered)}</p>` : ''}<dl class="kv2">${(c.strengths || [])[0] ? `<dt>Best point</dt><dd>${esc(rTxt(c.strengths[0]))}</dd>` : ''}${(c.concerns || [])[0] ? `<dt>Main concern</dt><dd>${esc(rTxt(c.concerns[0]))}</dd>` : ''}<dt>Price</dt><dd>${esc(c.price || 'Not quoted yet')}</dd>${(c.need || []).length ? `<dt>Waiting for</dt><dd>${esc(rTxt(c.need[0]))}</dd>` : ''}</dl>
+    ${opts.link ? `<p class="more">Full details: ${esc(m.name)} visit report</p>` : ''}</div>`;
   return `<div class="scard"><div class="sch"><h3>${esc(m.name)}</h3><span class="when">${esc(when)}</span></div>
     ${c.who ? `<p class="who1">${esc(c.who)}</p>` : ''}${c.offered ? `<p>${esc(c.offered)}</p>` : ''}
     ${(c.strengths || []).length || (c.concerns || []).length ? `<div class="sc2"><div><div class="lab ok">Strengths</div><ul>${li(c.strengths)}</ul></div><div><div class="lab warn">Concerns</div><ul>${li(c.concerns)}</ul></div></div>` : ''}
     <dl class="kv2"><dt>Price</dt><dd>${esc(c.price || 'Not quoted yet')}</dd><dt>Lead time</dt><dd>${esc(c.lead_time || 'Not given')}</dd>${c.our_take && !/^no (team )?(view|summary)/i.test(c.our_take) ? `<dt>Our take</dt><dd>${esc(c.our_take)}</dd>` : ''}${(c.need || []).length ? `<dt>We need</dt><dd><ul>${li(c.need)}</ul></dd>` : ''}</dl>
-    ${opts.link ? `<p class="more">Full details: visit report ${pad2(id)}</p>` : ''}</div>`;
+    ${opts.link ? `<p class="more">Full details: ${esc(m.name)} visit report</p>` : ''}</div>`;
 }
+const rNoise = t => /(\b[A-Z]{1,2}\d{3}\b[^|]*\|){2}|see \)|\b[A-Z]{2}\d{3}\b.*\b[A-Z]{2}\d{3}\b|serial|screenshot|counter|幻灯片|document tab|open document|heard|\[\?\]|cut off|left edge|shareholding|\d+\.\d{3}%|model number|\b[A-Z]{2,3}\d{3,}[x×]/i.test(t);
 const rTable = (head, rows) => rows.length ? `<table class="t2${head.length > 3 ? ' wide' : ''}"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td data-l="${i ? head[i] : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '';
 function rGlossary(text, gl){
-  const used = (gl || []).filter(g => new RegExp(`\\b${g.term.split(/[\s(/]/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(text));
+  const used = (gl || []).filter(g => new RegExp(`\\b${g.term.split(/[\s(/,]/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(text));
   return used.length ? `<section class="gl"><h2>Terms used</h2><dl>${used.map(g => `<dt>${esc(g.term)}</dt><dd>${esc(g.plain)}</dd>`).join('')}</dl></section>` : '';
 }
 function rCoverage(ms){
@@ -1416,7 +1420,8 @@ function rCoverage(ms){
   const missed = [];
   for (const m of ms){ const V = visitModel(m.id); if (m.cancelled) cancelled.push(m); else if (!V.empty) done.push(m); else if (V.started) missed.push(m); else ahead.push(m); }
   const names = a => a.map(m => m.name).join(', ');
-  return `${done.length} of ${ms.length - cancelled.length} visits covered${cancelled.length ? ` · ${esc(names(cancelled))} cancelled` : ''}${missed.length ? ` · nothing recorded at ${esc(names(missed))}` : ''}${ahead.length ? ` · not yet in this report: ${esc(names(ahead))} (${esc([...new Set(ahead.map(m => shortDate(m)))].join(', '))})` : ''}`;
+  if (!done.length && !missed.length && ahead.length === ms.length - cancelled.length) return `Planned: ${ahead.length} visit${ahead.length > 1 ? 's' : ''}. The report follows after the visits.`;
+  return `${ms.length} visit${ms.length > 1 ? 's' : ''} planned: ${done.length} done${cancelled.length ? `, ${cancelled.length} cancelled (${esc(names(cancelled))})` : ''}${missed.length ? `, ${missed.length} with nothing recorded (${esc(names(missed))})` : ''}${ahead.length ? `, ${ahead.length} still to come on ${esc([...new Set(ahead.map(m => shortDate(m)))].join(', '))}` : ''}`;
 }
 function rViews(V){
   const views = [];
@@ -1436,39 +1441,40 @@ function rTimeline(V, photoSrc){
   return items.length ? `<section><h2>On-site record <span class="n">${items.length}</span></h2><ol class="tl">${items.map(x => x.html).join('')}</ol></section>` : '';
 }
 function rSlides(V){
-  const read = V.photos.map(p => ({p, x: photoRead(p)})).filter(o => o.x && o.x.relevant !== false && ((o.x.figures || []).length || o.x.diagram));
+  const seenT = new Set();
+  const read = V.photos.map(p => ({p, x: photoRead(p)})).map(o => o.x ? {p: o.p, x: {...o.x, figures: (o.x.figures || []).filter(f => !rNoise(f))}} : o).filter(o => o.x && !seenT.has((o.x.title || '').toLowerCase()) && seenT.add((o.x.title || '').toLowerCase())).filter(o => o.x && o.x.relevant !== false && (['slide', 'spec_sheet', 'nameplate'].includes(o.x.kind) ? (o.x.figures || []).length >= 2 : o.x.kind === 'diagram' ? !!(o.x.diagram || (o.x.figures || []).length) : (o.x.figures || []).length >= 3) && !/history|历程|organisation chart/i.test(o.x.title || ''));
   if (!read.length) return '';
-  return `<section><h2>From the slides and diagrams <span class="n">${read.length}</span></h2><p class="empty-note" style="font-style:normal">Read from photos of the supplier's slides and drawings; [?] marks characters too small to read for certain.</p>
+  const w = o => (o.x.figures || []).length + (o.x.diagram ? 2 : 0), keep = new Set([...read].sort((a, b) => w(b) - w(a)).slice(0, 8)); for (let i = read.length - 1; i >= 0; i--) if (!keep.has(read[i])) read.splice(i, 1);
+  return `<section><h2>From the slides and diagrams</h2>
     ${read.map(({p, x}) => {
-      return `<div class="slide"><div class="sh"><span class="kind">${esc(PKIND[x.kind] || 'Photo')}</span><b>${esc(x.title || '')}</b><span class="m">${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}</span></div>
-        ${(x.figures || []).length ? `<ul>${x.figures.slice(0, 6).map(f => `<li>${esc(rClean(f))}</li>`).join('')}${x.figures.length > 6 ? `<li class="src">+ ${x.figures.length - 6} more on the slide</li>` : ''}</ul>` : ''}${x.diagram ? `<p><b>Diagram:</b> ${esc(rClean(x.diagram))}</p>` : ''}</div>`; }).join('')}</section>`;
+      return `<div class="slide"><div class="sh"><span class="kind">${esc(PKIND[x.kind] || 'Photo')}</span><b>${esc(x.title || '')}</b></div>
+        ${(x.figures || []).length ? `<ul>${x.figures.slice(0, 5).map(f => `<li>${esc(rClean(f))}</li>`).join('')}</ul>` : ''}${x.diagram ? `<p><b>Diagram:</b> ${esc(rClean(x.diagram))}</p>` : ''}</div>`; }).join('')}</section>`;
 }
 function rGallery(V, photoSrc){
   if (!photoSrc) return '';
   const shown = V.photos.filter(p => photoSrc[p.uid || p.id]);
   if (!shown.length) return '';
-  return `<section><h2>Photos <span class="n">${shown.length}${shown.length < V.photos.length ? ` of ${V.photos.length}` : ''}</span></h2><div class="gallery">${shown.map(p => `<figure><img src="${photoSrc[p.uid || p.id]}" alt=""><figcaption>${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}${p.text ? ` · ${esc(p.text)}` : ''}${(x => x && x.relevant !== false && x.title ? `<br><b>${esc(PKIND[x.kind] || 'Photo')}: ${esc(x.title)}</b>` : '')(photoRead(p))}${(m => m ? `<br><b>At ${fmtAt(m.t, m.rec.duration)} in the meeting recording</b>${m.quote ? `: “${esc(m.quote.slice(0, 160))}${m.quote.length > 160 ? '…' : ''}”` : ''}` : '')(photoMoment(p))}</figcaption></figure>`).join('')}</div></section>`;
+  return `<section><h2>Photos <span class="n">${shown.length}${shown.length < V.photos.length ? ` of ${V.photos.length}` : ''}</span></h2><div class="gallery">${shown.map(p => `<figure><img src="${photoSrc[p.uid || p.id]}" alt=""><figcaption>${(x => x && x.relevant !== false && x.title ? esc(x.title) : esc(p.text || ''))(photoRead(p))}</figcaption></figure>`).join('')}</div></section>`;
 }
 function visitReportHtml(id, photoSrc){
   const V = visitModel(id), m = V.m, b = V.brief;
   const counts = [V.recs.filter(r => r.kind !== 'memo').length && plural(V.recs.filter(r => r.kind !== 'memo').length, 'meeting recording'), V.recs.filter(r => r.kind === 'memo').length && plural(V.recs.filter(r => r.kind === 'memo').length, 'voice note'), V.photos.length && plural(V.photos.length, 'photo'), V.videos.length && plural(V.videos.length, 'video'), V.typed.length && plural(V.typed.length, 'typed note')].filter(Boolean).join(' · ') || 'Nothing captured yet';
-  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${(visitCard(id) || {}).kind === 'reference' ? 'Reference plant visit' : 'Supplier visit'}</span><span class="doc">Visit ${pad2(id)}</span></div>
+  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${(visitCard(id) || {}).kind === 'reference' ? 'Reference plant visit' : 'Supplier visit'}</span><span class="doc">${esc(m.dow)} ${Number(m.date.slice(8))} Oct</span></div>
     <h1>${esc(m.name)}</h1><div class="sub">${esc(m.place || '')}${m.cancelled ? ' · Cancelled' : ''}</div>
-    <div class="meta"><div><span>Date</span>${esc(m.dow)} ${Number(m.date.slice(8))} Oct 2026</div><div><span>Arrived</span>${V.ins.length ? `${fmtTime(V.ins[0].at)} China time` : 'Not recorded'}</div>
-      ${m.contact ? `<div><span>Contact</span>${esc(m.contact)}</div>` : ''}<div><span>Source material</span>${esc(counts)}</div></div></header><main>`;
+    <div class="meta"><div><span>Date</span>${esc(m.dow)} ${Number(m.date.slice(8))} Oct 2026</div>${m.contact ? `<div><span>Contact</span>${esc(m.contact)}</div>` : ''}</div></header><main>`;
   h += visitCard(id) ? `<section class="brief1"><h2>At a glance</h2>${rCard(id)}</section>` : '';
   h += visitCard(id) ? '' : `<section><h2>Bottom line</h2>${b && b.headline ? `<div class="bluf"><span class="ai">✦ Claude</span><div class="head">${esc(rTxt(b.headline))}</div>${b.offer ? `<p>${esc(rTxt(b.offer))}</p>` : ''}${(b.bullets || []).length ? `<ul>${b.bullets.map(x => `<li>${esc(rTxt(x))}</li>`).join('')}</ul>` : ''}</div>`
     : V.sums.length ? `<div class="bluf"><div class="head">${esc(V.sums[0].text.split('\n')[0])}</div><p>${esc(V.sums[0].by)}'s summary</p></div>` : `<p class="empty-note">${m.cancelled ? 'Cancelled; nothing captured.' : V.started ? 'Nothing was captured at this visit.' : 'Not visited yet.'}</p>`}</section>`;
   const isRef = (visitCard(id) || {}).kind === 'reference', TOP = 8;
-  const top = {}, rest = []; for (const [k] of FACT_KEYS){ const clean = V.facts[k].filter(x => !rHousekeeping(x.text)); top[k] = k === 'specs' ? clean.slice(0, TOP) : clean; if (k === 'specs') rest.push(...clean.slice(TOP)); }
+  const top = {}, rest = []; for (const [k] of FACT_KEYS){ const clean = V.facts[k].filter(x => !rHousekeeping(x.text)); top[k] = k === 'specs' ? clean.slice(0, TOP) : clean; if (k === 'specs') rest.push(...clean.slice(TOP).filter(x => !rNoise(x.text)).slice(0, 8)); }
   if (!isRef && !V.empty) h += `<section><h2>Facts we have</h2>${rFacts(top)}</section>`;
   if (!V.empty) h += `<section><h2>Follow-ups <span class="n">${V.follow.length}</span></h2>${rActions(V.follow)}</section>`;
   if (V.questions.length) h += `<section><h2>Still to confirm <span class="n">${V.questions.length}</span></h2><ol class="q">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
-  if (!V.empty) h += `<div class="appx"><h2 class="ah">Appendix: source material</h2><p class="empty-note" style="font-style:normal">What was on the slides and diagrams, the photos, and the record of the visit as captured. Read the sections above first.</p></div>`;
+  if (!V.empty) h += `<div class="appx"><h2 class="ah">Appendix: source material</h2><p class="empty-note" style="font-style:normal">Figures read from the supplier's slides and drawings, and the photos.</p></div>`;
   if (rest.length) h += `<section><h2>All other figures noted <span class="n">${rest.length}</span></h2><ul>${rest.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></section>`;
-  if (V.toConfirm.length) h += `<section><h2>Notes to confirm <span class="n">${V.toConfirm.length}</span></h2><p class="empty-note" style="font-style:normal">Points where the recordings were unclear or disagreed. Check them with the supplier.</p><ul>${V.toConfirm.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
-  h += rSlides(V) + rViews(V) + rGallery(V, photoSrc) + rTimeline(V, photoSrc);
-  return rDoc(`Visit ${pad2(id)} · ${m.name}`, h + `</main>` + rFoot(`Visit report ${pad2(id)}`));
+  if (false) h += `<section><h2>Notes to confirm <span class="n">${V.toConfirm.length}</span></h2><p class="empty-note" style="font-style:normal">Points where the recordings were unclear or disagreed. Check them with the supplier.</p><ul>${V.toConfirm.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
+  h += rSlides(V) + rGallery(V, photoSrc);
+  return rDoc(`${m.name} visit report`, h + `</main>` + rFoot(`Visit report · ${m.name}`));
 }
 function scopeReportHtml(scope){
   const R = reportScope(scope), T = (tripDoc() || {}).trip || null;
@@ -1478,30 +1484,31 @@ function scopeReportHtml(scope){
   const isRef = id => (visitCard(id) || {}).kind === 'reference';
   let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${R.day ? 'Daily report' : 'Trip report'}</span><span class="doc">${R.day ? esc(DAYLABEL[R.day].split(' · ')[0]) : '27–30 Oct 2026'}</span></div>
     <h1>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill supplier tour')}</h1>
-    <div class="sub">${R.day ? esc(R.ms.map(m => m.name).join(' · ')) : 'Sharoon & Naveed · Zhenjiang, Changzhou, Suzhou, Shanghai, Luoyang, Zhuozhou'}</div>
+    <div class="sub">${R.day ? esc(R.ms.map(m => m.name).join(' · ')) : 'Sharoon (trip lead) & Naveed (capacity model) · Zhenjiang, Changzhou, Suzhou, Shanghai, Luoyang, Zhuozhou'}</div>
     <div class="cov">${rCoverage(R.ms)}</div></header><main>`;
   if (!R.day){
     if (T){
-      h += `<section class="brief1"><h2>The trip on one page</h2>
+      h += `<section class="brief1"><h2>The trip on one page</h2>${T.purpose ? `<p class="verdict" style="margin-top:0"><b>Why we went.</b> ${esc((t => t.charAt(0).toUpperCase() + t.slice(1))(T.purpose.replace(/^Purpose:\s*/i, '')))}</p>` : ''}
         ${(T.basis || []).length ? `<div class="basis"><div class="lab">What we are planning</div><ul>${T.basis.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
         ${T.verdict ? `<p class="verdict"><b>Verdict.</b> ${esc(T.verdict)}</p>` : ''}
-        ${T.budget ? `<div class="budget"><div class="lab warn">Cost</div>${esc(T.budget)}</div>` : ''}
+        ${T.budget ? `<div class="budget"><div class="lab warn">Cost</div><p style="margin:0">${esc(T.budget)}</p></div>` : ''}
         ${(() => { const ours = (T.next_steps || []).filter(x => /^(Sharoon|Naveed|Both|Team|Us)$/i.test(x.owner || '')).slice(0, 3);
-          return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol>${T.owners_note ? `<p class="src" style="margin:6px 0 0">${esc(T.owners_note)}</p>` : ''}</div>` : ''; })()}
+          return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol></div>` : ''; })()}
         ${(T.shortlist || []).length ? `<h3>Who is in the running</h3>${rTable(['Equipment', 'Options', 'Where it stands'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}` : ''}
-        ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${rTable(['Decision', 'Options', 'Our leaning', 'Owner', 'Decide by'], T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner || 'To assign'), esc(x.by || 'Not set')]))}${T.owners_note ? `<p class="src" style="margin:4px 0 0">${esc(T.owners_note)}</p>` : ''}` : ''}
-        ${(() => { const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
-          const we = (T.next_steps || []).filter(x => ours.test(x.owner || ''));
-          const key = t => t.toLowerCase().replace(/[^a-z ]/g, '').split(' ').filter(w => w.length > 3).slice(0, 4).join(' ');
-          for (const m of done) for (const f of visitModel(m.id).follow) if (ours.test(f.owner || '') && !we.some(x => key(x.what) === key(f.what)) && we.length < 12) we.push({what: `${f.what} (${m.name})`, owner: f.owner});
-          return (we.length ? `<h3>Next steps: we do</h3>${rTable(['Step', 'Owner'], we.map(x => [esc(x.what), esc(x.owner)]))}` : '')
-               + (them.length ? `<h3>Next steps: we chase</h3>${rTable(['Supplier', 'What we are waiting for', 'Chased by', 'Expected by'], them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what), esc(x.chaser || 'To assign'), esc(x.by || 'Not set')]))}` : ''); })()}</section>`;
+        ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${(() => { const by = T.decisions.some(x => x.by); return rTable(['Decision', 'Options', 'Our leaning', 'Owner'].concat(by ? ['Decide by'] : []), T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner && x.owner !== 'To assign' ? x.owner : 'To agree')].concat(by ? [esc(x.by || 'Not set')] : []))); })()}${T.owners_note ? `<p class="src" style="margin:4px 0 0">${esc(T.owners_note)}</p>` : ''}` : ''}
+        ${(() => { const key = t => t.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 3).join(' ');
+          const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
+          const we = (T.next_steps || []).filter(x => ours.test(x.owner || '')).slice(3);
+          const first = (T.next_steps || []).filter(x => ours.test(x.owner || '')).slice(0, 3), seen = t => [...first, ...we].some(x => { const A = new Set(key(x.what).split(' ')), B = key(t).split(' '); return B.filter(w => A.has(w)).length >= 2; });
+          for (const m of done) for (const f of visitModel(m.id).follow) if (ours.test(f.owner || '') && !seen(f.what) && we.length < 9) we.push({what: `${f.what}. Raised at ${m.name}`.replace(/\.\. /, '. '), owner: f.owner});
+          return (we.length ? `<h3>More steps for us</h3>${rTable(['Step', 'Owner'], we.map(x => [esc(x.what), esc(x.owner)]))}` : '')
+               + (false ? `<h3>Waiting on suppliers</h3>${(() => { const by = them.some(x => x.by || x.chaser); return rTable(['Supplier', 'What we are waiting for'].concat(by ? ['Chased by', 'Expected by'] : []), them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what)].concat(by ? [esc(x.chaser || 'To agree'), esc(x.by || 'Not set')] : []))); })()}` : ''); })()}</section>`;
       if (T.money && ((T.money.known || []).length || (T.money.awaiting || []).length))
-        h += `<section class="keep"><h2>Money and timing</h2><div class="sc2"><div><div class="lab ok">What we have</div><ul>${(T.money.known || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab warn">Still waiting for</div><ul>${(T.money.awaiting || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>`;
+        h += `<section><h2>Money and timing</h2><div class="sc2"><div><div class="lab ok">What we have</div><ul>${(T.money.known || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab warn">Still waiting for</div><ul>${(T.money.awaiting || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>`;
       for (const c of [...cats, 'Other suppliers']){ const ids = done.map(m => m.id).filter(id => !isRef(id) && catOf(id) === c);
-        if (ids.length) h += `<section><h2>${esc(c)}</h2>${ids.map(id => rCard(id, {link: true})).join('')}</section>`; }
+        if (ids.length) h += `<section><h2>${esc(c)}</h2>${ids.map(id => rCard(id, {link: true, compact: true})).join('')}</section>`; }
       const refs = done.filter(m => isRef(m.id));
-      if ((T.lessons || []).length) h += `<section class="keep"><h2>What we learned at operating plants</h2><p class="src" style="margin:0 0 6px">${esc(refs.map(m => `${m.name} (${shortDate(m)})`).join(' · '))}</p><ul>${T.lessons.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
+      if ((T.lessons || []).length) h += `<section><h2>What we learned at operating plants</h2><p class="src" style="margin:0 0 6px">${esc(refs.map(m => `${m.name} (${shortDate(m)})`).join(' · '))}</p><ul>${T.lessons.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
       else if (refs.length) h += `<section><h2>What we learned at operating plants</h2>${refs.map(m => rCard(m.id)).join('')}</section>`;
       if ((T.open_issues || []).length) h += `<section><h2>Open issues that block decisions</h2>${rTable(['Area', 'Issue'], T.open_issues.map(x => [`<b>${esc(x.area)}</b>`, esc(x.text)]))}</section>`;
       const textSoFar = h.replace(/<[^>]+>/g, ' ');
@@ -1523,8 +1530,8 @@ function scopeReportHtml(scope){
     if (dec.length) h += `<section><h2>Decisions raised today</h2><ol class="q">${dec.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
     const acts = done.flatMap(m => visitModel(m.id).follow.map(f => ({...f, sup: m.name}))).slice(0, 10);
     if (acts.length) h += `<section><h2>Follow-ups from today</h2>${rTable(['Supplier', 'Action', 'Owner'], acts.map(a => [`<b>${esc(a.sup)}</b>`, esc(a.what), esc(a.owner || '')]))}</section>`;
-    if (!done.length && !head && !hl.length) h += `<section><h2>Nothing yet</h2><p>No visit on this day has been recorded and processed yet. This report fills in after the visits.</p></section>`;
-    else if (T) h += rGlossary(h.replace(/<[^>]+>/g, ' '), T.glossary);
+    if (done.length && T) h += rGlossary(h.replace(/<[^>]+>/g, ' '), (T.glossary || []).filter(g => !/^(Project Butterfly|CNPT|Chinalco|KEZAD)$/.test(g.term)));
+    if (!done.length && !head && !hl.length) h += `<section><h2>Planned visits</h2><ul>${R.ms.map(m => `<li><b>${esc(m.name)}</b>${m.place ? ` · ${esc(m.place)}` : ''}${m.contact ? ` · contact ${esc(m.contact)}` : ''}</li>`).join('')}</ul></section>`;
   }
   return {html: rDoc(R.title, h + `</main>` + rFoot(R.day ? 'Daily report' : 'Trip report')), title: R.title, file: R.file.replace(/\.md$/, '.html'), md: ''};
 }
@@ -1602,36 +1609,43 @@ async function buildPdf(r){
     //    and never leave a heading alone at the bottom of a page
     const mm = 10, cw = 210 - 2 * mm, pageCss = Math.floor((297 - 2 * mm - 6) / cw * W);   // CSS px of content per A4 page
     const top = el => el.getBoundingClientRect().top + d.defaultView.scrollY, bot = el => el.getBoundingClientRect().bottom + d.defaultView.scrollY;
-    const atoms = [...d.querySelectorAll('tr, .scard, .keep, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
-      .map(el => [top(el), bot(el)]).filter(([a, b]) => b - a > 0 && b - a < pageCss * 0.9);
-    const heads = [...d.querySelectorAll('h2, h3, .scard .sch, thead')].map(el => [top(el), bot(el)]);
+    const atoms = [...d.querySelectorAll('tr, .keep, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
+      .map(el => [top(el), bot(el)]).concat([...d.querySelectorAll('.scard')].map(c => { const h = c.querySelector('.sch'), n = h && h.nextElementSibling; return [top(c) - 2, n ? bot(n) : (h ? bot(h) : top(c) + 40)]; })).filter(([a, b]) => b - a > 0 && b - a < pageCss * 0.9);
+    const heads = [...d.querySelectorAll('h2, h3, .scard .sch, thead')].map(el => [el.matches('.scard .sch') ? top(el.closest('.scard')) - 2 : top(el), bot(el)]);
     const ok = y => !atoms.some(([a, b]) => a < y - 1 && b > y + 1);
     const cuts = [...new Set(atoms.map(([, b]) => Math.ceil(b)).concat(atoms.map(([a]) => Math.floor(a))))].filter(ok).sort((a, b) => a - b);
+    // a page that starts inside a table repeats that table's header row
+    const tables = [...d.querySelectorAll('table')].filter(t => t.tHead).map(t => ({b: bot(t), h: [top(t.tHead), bot(t.tHead)]}));
+    const inTable = y => tables.find(t => y > t.h[1] + 1 && y < t.b - 4);
     const pages = []; let y = 0;
     while (y < H - 2){
-      let end = y + pageCss;
+      const tb = inTable(y), cap = pageCss - (tb ? Math.ceil(tb.h[1] - tb.h[0]) : 0);
+      let end = y + cap;
       if (end < H){
-        const c = cuts.filter(x => x > y + pageCss * 0.35 && x <= y + pageCss);
+        const c = cuts.filter(x => x > y + cap * 0.35 && x <= y + cap);
         end = c.length ? c[c.length - 1] : end;
-        const orphan = heads.find(([a, b]) => b <= end + 2 && b >= end - 40 && a > y);     // heading right before the cut: move it to the next page
+        const orphan = heads.find(([a, b]) => b <= end + 2 && b >= end - 110 && a > y);     // heading right before the cut: move it to the next page
         if (orphan && orphan[0] > y + pageCss * 0.35) end = Math.floor(orphan[0]) - 2;
       } else end = H;
-      pages.push([y, end]); y = end;
+      pages.push([y, end, tb]); y = end;
     }
     // 2. render each page on its own (no giant canvas, so nothing is ever cut off), and lay the page's text underneath so the PDF can be searched and copied
     const {jsPDF} = window.jspdf, pdf = new jsPDF({unit: 'mm', format: 'a4', compress: true}), k = cw / W, scale = 2;
     const textEls = [...d.querySelectorAll('h1, h2, h3, p, li, td, th, dt, dd, .lab, .budget, .cov, .sch .when, footer span')].filter(el => !el.querySelector('p, li, td, dt, dd'));
     for (let n = 0; n < pages.length; n++){
-      const [a, b] = pages[n];
+      const [a, b, tb] = pages[n];
       const canvas = await window.html2canvas(d.body, {scale, x: 0, y: a, width: W, height: b - a, windowWidth: W, windowHeight: H, backgroundColor: '#ffffff', useCORS: true, logging: false});
       if (n) pdf.addPage();
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', mm, mm, cw, (b - a) * k);
+      let off = 0;
+      if (tb){ const hh = Math.ceil(tb.h[1] - tb.h[0]); const hc = await window.html2canvas(d.body, {scale, x: 0, y: tb.h[0], width: W, height: hh, windowWidth: W, windowHeight: H, backgroundColor: '#ffffff', useCORS: true, logging: false});
+        pdf.addImage(hc.toDataURL('image/jpeg', 0.9), 'JPEG', mm, mm, cw, hh * k); off = hh * k; }
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', mm, mm + off, cw, (b - a) * k);
       pdf.setFontSize(8);
       for (const el of textEls){ const t0 = top(el); if (t0 < a - 1 || t0 >= b - 1) continue;
         const txt = (el.innerText || '').replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/×/g, 'x').replace(/→/g, '->').replace(/≈|~/g, 'approx. ').replace(/[^\x20-\xFF\n]/g, ' ').replace(/[ \t]+/g, ' ').trim(); if (!txt) continue;
         const r = el.getBoundingClientRect();
-        pdf.text(pdf.splitTextToSize(txt, Math.max(20, r.width * k)), mm + r.left * k, mm + (t0 - a) * k + 2.5, {renderingMode: 'invisible', baseline: 'alphabetic'}); }
-      pdf.setTextColor(140); pdf.text(`${r.title} · page ${n + 1} of ${pages.length}`, mm, 297 - 5, {renderingMode: 'fill'});
+        pdf.text(pdf.splitTextToSize(txt, Math.max(20, r.width * k)), mm + r.left * k, mm + off + (t0 - a) * k + 2.5, {renderingMode: 'invisible', baseline: 'alphabetic'}); }
+      pdf.setTextColor(140); pdf.text(`${r.title.replace(/→/g, '-').replace(/[–—]/g, '-').replace(/[^\x20-\xFF]/g, ' ')} · page ${n + 1} of ${pages.length}`, mm, 297 - 5, {renderingMode: 'fill'});
       if (n === pages.length - 1 && footText.length){ pdf.setFontSize(7); const clean = t => t.replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\x20-\xFF]/g, ' ');
         const lines = footText.flatMap(t => pdf.splitTextToSize(clean(t), cw)); pdf.text(lines, mm, 297 - 9 - 3 * (lines.length - 1), {renderingMode: 'fill'}); }
       pdf.setTextColor(0);
