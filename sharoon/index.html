@@ -525,7 +525,14 @@ let linkTookOver = null;
 if (['Sharoon','Naveed'].includes(FIXED_USER) && user !== FIXED_USER && !sessionStorage.getItem('mn.switched')){ if (user) linkTookOver = user; user = FIXED_USER; try { localStorage.setItem('mn.user', user); } catch(e){} }
 let meetingState = {}; // id -> {checkedIn, at, lat, lng, summary}
 let noteCache = {};    // meetingId -> notes[]
-let urls = [];         // object URLs to revoke on route change
+let urls = [];         // one-off object URLs (exports, clips) to revoke on route change
+const blobUrls = new Map(); // note id -> {blob, url}: photos/audio keep the same URL across redraws, so nothing reloads or flashes
+const imgSize = new Map();  // url -> [w, h] once loaded, so a redraw reserves the right space and the page doesn't jump
+// Notes are re-read from storage on every redraw, so the Blob object changes; the note id + size + time identify the same file.
+function blobUrl(n){ const k = n.id, sig = `${n.blob.size}:${n.blob.type}:${n.createdAt}`, c = blobUrls.get(k); if (c && c.sig === sig) return c.url; if (c) URL.revokeObjectURL(c.url); const url = URL.createObjectURL(n.blob); blobUrls.set(k, {sig, url}); return url; }
+function pruneBlobUrls(){ const live = new Set(Object.values(noteCache).flat().filter(n => !n.remote).map(n => n.id)); for (const [k, c] of blobUrls) if (!live.has(k)){ URL.revokeObjectURL(c.url); blobUrls.delete(k); } }
+const imgTag = (u, extra = '') => { const d = imgSize.get(u); return `<img src="${u}" alt="" decoding="async"${d ? ` width="${d[0]}" height="${d[1]}"` : ''}${extra}>`; };
+document.addEventListener('load', e => { const i = e.target; if (i.tagName === 'IMG' && i.src.startsWith('blob:') && i.naturalWidth) imgSize.set(i.src, [i.naturalWidth, i.naturalHeight]); }, true);
 
 function toast(msg, ms=2200){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(t._h); t._h = setTimeout(() => t.hidden = true, ms); }
 /* All times are China time (the itinerary is in local China time), whatever zone the phone is set to. */
@@ -578,16 +585,24 @@ async function loadState(){
 /* ---------- router ---------- */
 window.addEventListener('hashchange', render);
 async function render(){
-  urls.forEach(u => URL.revokeObjectURL(u)); urls = [];
-  await loadState();
-  const h = location.hash;
+  const h = location.hash, fresh = h !== lastRoute;
+  if (fresh){ urls.forEach(u => URL.revokeObjectURL(u)); urls = []; }
+  // remember what is at the top of the screen, so a redraw (sync, answer) puts it back exactly there
+  let anchor = null;
+  if (!fresh){ const el = [...document.querySelectorAll('#view [data-id], #view .cq, #view section, #view article')].find(e => e.getBoundingClientRect().bottom > 70);
+    if (el) anchor = {sel: el.dataset.id ? `[data-id="${CSS.escape(el.dataset.id)}"]` : el.dataset.qid ? `.cq[data-qid="${CSS.escape(el.dataset.qid)}"]` : null, top: el.getBoundingClientRect().top, y: window.scrollY}; }
+  await loadState(); pruneBlobUrls();
   $('#who').textContent = user || 'Name'; $('#who').dataset.i = (user || '?')[0];
-  const v = $('#view'), fresh = h !== lastRoute; lastRoute = h;
-  if (fresh){ v.classList.remove('enter'); window.scrollTo(0, 0); }
+  const v = $('#view'); lastRoute = h;
+  v.classList.remove('enter'); clearTimeout(v._enterT); // a redraw must never replay the entrance animation on every card
+  if (fresh) window.scrollTo(0, 0);
   await route(h);
-  if (fresh){ void v.offsetWidth; v.classList.add('enter'); } // replay the entrance animation only on navigation
+  if (fresh){ void v.offsetWidth; v.classList.add('enter'); v._enterT = setTimeout(() => v.classList.remove('enter'), 700); } // only when you open a page
+  else if (anchor){ const el = anchor.sel && v.querySelector(anchor.sel); window.scrollTo(0, el ? window.scrollY + el.getBoundingClientRect().top - anchor.top : anchor.y); }
 }
 let lastRoute = null;
+let pendingRender = false; // a sync brought news while you were busy: redraw when you finish
+setInterval(() => { if (pendingRender && !rec && !editing() && document.visibilityState === 'visible'){ pendingRender = false; render(); } }, 2000);
 // Home must never go stale: refresh every 30 s and when the phone wakes, unless the user is busy.
 const refreshHome = () => { const h = location.hash; if ((h === '' || h === '#') && !rec && !starting && !editing() && document.visibilityState === 'visible') render(); };
 setInterval(refreshHome, 30000);
@@ -783,7 +798,7 @@ function photosDuring(rec){
 function photoStripHtml(rec){
   const ps = photosDuring(rec); if (!ps.length) return '';
   return `<div class="rtag">Photos during this recording</div><div class="pstrip">${ps.map(p => { const m = photoMoment(p);
-    const img = p.blob ? (() => { const u = URL.createObjectURL(p.blob); urls.push(u); return `<img src="${u}" alt="" loading="lazy">`; })()
+    const img = p.blob ? imgTag(blobUrl(p), ' loading="lazy"')
       : p.media ? `<button class="btn ghost small" data-remote-photo="${esc(p.media.path)}" data-parts="${p.media.parts || 1}">Show photo</button>` : '';
     return `<figure>${img}<figcaption><button class="segt" data-seekuid="${esc(m.uid)}" data-t="${m.t}">${fmtAt(m.t, rec.duration)}</button>${(x => x && x.relevant !== false && x.title ? ` <b>${esc(x.title)}</b>` : '')(photoRead(p))}${m.quote ? ` ${esc(m.quote.slice(0, 120))}${m.quote.length > 120 ? '…' : ''}` : ''}</figcaption></figure>`; }).join('')}</div>`;
 }
@@ -795,9 +810,9 @@ function noteHtml(n){
   const long = t => t && t.length > 420 ? ' class="clamp"' : '';
   const more = t => t && t.length > 420 ? `<button class="morebtn" data-more>Show more</button>` : '';
   if (n.type === 'text') body = n.text ? `<p${long(n.text)}>${esc(n.text)}</p>${more(n.text)}` : `<p style="color:var(--ink2)"><i>Tag only, no text</i></p>`;
-  if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">` + momentHtml(n) + photoReadHtml(n); }
-  if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>` + momentHtml(n); }
-  if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" preload="metadata" data-dur="${n.duration || 0}"></audio>
+  if (n.type === 'photo'){ const u = blobUrl(n); body = imgTag(u) + momentHtml(n) + photoReadHtml(n); }
+  if (n.type === 'video'){ const u = blobUrl(n); body = `<video src="${u}" controls playsinline preload="metadata"></video>` + momentHtml(n); }
+  if (n.type === 'audio'){ const u = blobUrl(n); body = `<audio src="${u}" preload="metadata" data-dur="${n.duration || 0}"></audio>
     <div class="player"><button class="pp" data-play aria-label="Play">${ICON.play}</button><input type="range" min="0" max="${Math.max(1, Math.round(n.duration || 0))}" step="1" value="0" aria-label="Position"><span class="tm">${fmtAt(0, n.duration || 0)} / ${fmtAt(n.duration || 0, n.duration || 0)}</span></div>`
     + (n.marks && n.marks.length ? `<div class="marks${n.marks.length > 12 ? ' collapsed' : ''}">${n.marks.map(x => `<button class="mark" data-seek="${x.t}" data-n="${n.id}"><b>${fmtAt(x.t, n.duration)}</b> ${esc(x.tag === 'Mark' ? 'Marked' : x.tag)}</button>`).join('')}</div>${n.marks.length > 12 ? `<button class="morebtn" data-more-marks>Show all ${n.marks.length} tags</button>` : ''}` : '')
     + resultHtml(n)
@@ -956,7 +971,9 @@ let summaryFlush = null; // saves a summary typed in the last half second when t
 const flushAll = () => { try { summaryFlush?.(); } catch(e){} };
 window.addEventListener('pagehide', flushAll);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushAll(); }); // opened by renderMeeting once the visit page exists
-function editing(){ const a = document.activeElement; return !!(document.querySelector('#ntext') || document.querySelector('.cap') || (a && a.tagName === 'TEXTAREA')); }
+function editing(){ const a = document.activeElement;
+  const playing = [...document.querySelectorAll('#view audio, #view video')].some(m => !m.paused) || (typeof clipAudio !== 'undefined' && clipAudio && !clipAudio.paused);
+  return !!(document.querySelector('#ntext') || document.querySelector('.cap') || document.querySelector('.movebox') || playing || (a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && a.type !== 'range') || a.tagName === 'SELECT'))); }
 function openComposer(mid, existing){
   const slot = $('#composer-slot');
   if (location.hash !== `#m${mid}` || !slot){ pendingComposer = {mid, existing}; if (location.hash !== `#m${mid}`) location.hash = `#m${mid}`; return; }
@@ -1848,7 +1865,7 @@ async function syncNow(manual){
     scheduleSync(60000);
   } finally {
     sync.running = false; syncUI();
-    if (changed && !rec && !editing()) render();
+    if (changed && !rec){ if (editing()) pendingRender = true; else render(); }
     if (sync.queued){ sync.queued = false; scheduleSync(1500); }
   }
 }
@@ -1918,8 +1935,17 @@ function clarbarHtml(){
 async function setAnswer(qid, a){
   const v = String(a || '').trim(); if (!v) return;
   answers[qid] = {id: qid, a: v, by: user || '', at: new Date().toISOString()}; saveAnswers();
-  toast('Answer saved. Claude uses it on the next run.'); scheduleSync(1500);
-  const y = window.scrollY; render(); requestAnimationFrame(() => window.scrollTo(0, y));
+  toast('Answer saved. Claude uses it on the next run.'); scheduleSync(4000);
+  const q = document.querySelector(`.cq[data-qid="${CSS.escape(qid)}"]`), card = q && q.closest('#clar');
+  if (!q){ render(); return; }
+  q.classList.add('done'); q.classList.remove('edit');
+  q.querySelectorAll('[data-cans]').forEach(b => b.classList.toggle('on', b.dataset.cans === v));
+  let ansEl = q.querySelector('.ans'); if (!ansEl){ ansEl = document.createElement('div'); ansEl.className = 'ans'; q.querySelector('.opts').before(ansEl); }
+  ansEl.innerHTML = `✓ ${esc(v)} <span style="color:var(--mute);font-weight:600">· ${esc(user || '')}</span>`;
+  if (!q.querySelector('[data-cedit]')){ const b = document.createElement('button'); b.className = 'btn ghost small'; b.dataset.cedit = ''; b.textContent = 'Change'; q.querySelector('[data-clip]')?.parentElement.appendChild(b); }
+  const inp = q.querySelector('.other input'); if (inp){ inp.value = ''; inp.blur(); }
+  if (card){ const open = [...card.querySelectorAll('.cq')].filter(x => !x.classList.contains('done')).length;
+    card.querySelector('.eyebrow').textContent = `✦ Claude needs your help · ${open ? `${open} open` : 'all answered ✓'}`; }
 }
 let clipAudio = null;
 document.addEventListener('click', async e => {
@@ -1933,7 +1959,7 @@ document.addEventListener('click', async e => {
   const t = Number(pl.dataset.t) || 0;
   // 1. this phone has the recording: play it right there
   const own = Object.values(noteCache).flat().find(n => !n.remote && n.blob && uidOf(n) === pl.dataset.cuid);
-  if (own){ const u = URL.createObjectURL(own.blob); urls.push(u); clipAudio = new Audio(u); clipAudio.currentTime = Math.max(0, t - 8); clipAudio.play().catch(() => {}); return; }
+  if (own){ const u = blobUrl(own); clipAudio = new Audio(u); clipAudio.currentTime = Math.max(0, t - 8); clipAudio.play().catch(() => {}); return; }
   // 2. otherwise the 30-second clip Claude cut, from the sync repo
   if (!pl.dataset.clip) return toast('The audio is on the other phone');
   if (!syncCfg() || !navigator.onLine) return toast('Needs a connection to play this clip');
@@ -1994,7 +2020,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.9';
+const APP_VERSION = '3.10';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
