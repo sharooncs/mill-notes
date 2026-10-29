@@ -356,6 +356,7 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .pread{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:12px;border-radius:14px;background:rgba(255,255,255,.75);border:1px solid var(--stroke)}
 .pread .prh{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pread .prt{font-size:15px}.pread p{margin:0;font-size:14px}
 .ptxt{white-space:pre-wrap;font:13px/1.45 var(--font);margin:6px 0 0;padding:8px;border-radius:10px;background:var(--glass-hi)}.ptxt.en{color:var(--ink2)}
+.repframe{width:100%;min-height:70vh;border:0;border-radius:20px;background:#fff;box-shadow:var(--shadow);display:block}
 .clar{border:2px solid rgba(110,79,216,.45);background:linear-gradient(180deg,#F7F4FF,#EFEAFF)}
 .clar .eyebrow{color:#5B3FC4}
 .cq{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid rgba(110,79,216,.18)}
@@ -1121,48 +1122,26 @@ function reportMarkdown(scope){
 }
 
 /* On-screen version */
-function renderReport(scope){
-  const R = reportScope(scope), t = totals(R.facts), topics = byTag(R.facts);
-  setTop(R.day ? `${R.ms[0].dow} ${Number(R.ms[0].date.slice(8))} Oct report` : 'Trip report', true);
-  const z = v => (v ? '' : ' zero');
-  const li = it => `<li><a href="#m${it.m.id}" class="rv">${pad2(it.m.id)} ${esc(it.m.name)}</a> ${esc(it.text)}${it.by ? ` <span class="rby">${esc(it.by)}</span>` : ''}</li>`;
-  let h = `<section class="repcard glass" style="display:flex;flex-direction:column;gap:10px"><div class="eyebrow">${R.day ? 'Day report' : 'Whole trip'} · ${esc(user || '')}'s phone</div><h2>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill tour')}</h2>
-    <div class="stats">
-      <div class="${z(t.checked)}"><b>${t.checked}/${t.visits}</b><span>checked in</span></div>
-      <div class="sm${z(t.meeting)}"><b>${t.meeting}</b><span>${t.meeting === 1 ? 'meeting recording' : 'meeting recordings'}${t.recSecs ? `<em>${fmtHours(t.recSecs)}</em>` : ''}</span></div>
-      <div class="sv${z(t.memo)}"><b>${t.memo}</b><span>${t.memo === 1 ? 'voice note' : 'voice notes'}${t.memoSecs ? `<em>${fmtHours(t.memoSecs)}</em>` : ''}</span></div>
-      <div class="${z(t.summaries)}"><b>${t.summaries}/${t.visits}</b><span>summaries</span></div>
-    </div>
-    <div style="font-size:13px;color:var(--ink2);font-weight:600">${plural(t.photo,'photo')} · ${plural(t.video,'video')} · ${plural(t.text,'typed note')}</div>
-    <div class="rowbtns"><button class="btn ghost small" data-a="repcopy" data-s="${scope}">Copy</button><button class="btn ${t.checked + t.audio + t.text + t.photo ? 'primary' : 'ghost'} small" data-a="repshare" data-s="${scope}">Open report</button></div></section>`;
-  const started = f => new Date(`${f.m.date}T${f.m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now();
-  h += R.day ? briefHtml(dayBrief(R.ms[0].date), 'Daily brief')
-             : (() => { const ds = [...new Set(MEETINGS.map(m => m.date))].map(d => [d, dayBrief(d)]).filter(x => x[1]);
-                 return ds.length ? `<section class="card brief"><div class="eyebrow">✦ Day by day · by Claude</div><ul class="rl">${ds.map(([d, b]) => `<li><a class="rv" href="#day${MEETINGS.find(m => m.date === d).day}">${MEETINGS.find(m => m.date === d).dow} ${Number(d.slice(8))} Oct</a> ${esc(b.headline || '')}</li>`).join('')}</ul></section>` : ''; })();
-  const missing = R.facts.filter(f => !f.st.summary && started(f));
-  if (missing.length) h += `<div class="banner"><span>Missing summary: ${missing.map(f => `<a href="#m${f.m.id}" class="rv">${pad2(f.m.id)}</a>`).join(' ')}</span></div>`;
-  for (const tag of ['Follow-up','Question']) if (topics[tag]) h += `<section class="card"><h3 class="rh3">${tag === 'Follow-up' ? 'Follow-ups' : 'Open questions'}</h3><ul class="rl">${topics[tag].map(li).join('')}</ul></section>`;
-  const tp = TOPIC_ORDER.filter(tg => topics[tg] && !['Follow-up','Question'].includes(tg));
-  if (tp.length) h += `<section class="card"><h3 class="rh3">By topic</h3>${tp.map(tg => `<div class="rtag">${esc(tg)}</div><ul class="rl">${topics[tg].map(li).join('')}</ul>`).join('')}</section>`;
-  let curDay = null;
-  for (const f of R.facts){
-    if (!R.day && f.m.day !== curDay){ curDay = f.m.day; h += `<div class="section-h"><h3>${DAYLABEL[curDay]}</h3><a href="#day${curDay}" class="dayrep">${ICON.rep}Day report</a></div>`; }
-    const upcoming = !started(f) && f.empty;
-    if (upcoming){ h += `<section class="card rvisit" style="padding:12px 16px"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="chip" style="padding:4px 9px">Upcoming</span><span class="rt">${f.m.time}</span></a></section>`; continue; }
-    h += `<section class="card rvisit${f.st.checkedIn ? ' done' : ''}"><a href="#m${f.m.id}" class="rvh"><span class="num">${pad2(f.m.id)}</span><b>${esc(f.m.name)}</b><span class="rt">${f.m.time}</span></a>
-      <div class="rmeta">${f.st.checkedIn ? `<span class="chip ok">✓ ${fmtTime(f.st.at)}</span>` : '<span class="chip">Not checked in</span>'}
-        ${[f.c.meeting ? `${plural(f.c.meeting,'meeting recording')} · ${fmtHours(f.recSecs)}` : 'no meeting recording', f.c.memo ? plural(f.c.memo,'voice note') : '', plural(f.c.photo,'photo'), f.c.video ? plural(f.c.video,'video') : '', f.c.text ? plural(f.c.text,'note') : ''].filter(Boolean).map(x => `<span style="white-space:nowrap">${x}</span>`).join('<span aria-hidden="true">·</span>')}</div>
-      ${visitBrief(f.m.id) && visitBrief(f.m.id).headline ? `<p class="aihead">✦ ${esc(visitBrief(f.m.id).headline)}</p>` : ''}
-      <p class="rsum">${f.st.summary ? esc(f.st.summary) : '<i>No summary yet</i>'}</p>
-      ${f.items.length ? `<ul class="rl">${f.items.sort((a,b) => a.at - b.at).map(it => `<li><span class="rtg">${esc(it.tag)}</span> ${esc(it.text)}</li>`).join('')}</ul>` : ''}
-      ${f.meetings.filter(r => r.caption || r.transcript).length ? `<ul class="rl">${f.meetings.filter(r => r.caption || r.transcript).map(r => `<li><span class="rtg" style="background:#C2452A;color:#fff">Meeting</span> ${fmtTime(r.at)}${r.caption ? ` — ${esc(r.caption)}` : ''}${r.transcript ? `<div class="rtx">${esc(r.transcript.length > 320 ? r.transcript.slice(0, 320) + '…' : r.transcript)}</div>` : ''}</li>`).join('')}</ul>` : ''}
-      ${f.memos.length ? `<ul class="rl">${f.memos.map(v => `<li><span class="rtg memo">Voice note</span> ${fmtTime(v.at)} · ${fmtHours(v.dur)}${v.text ? ` — ${esc(v.text)}` : ''}</li>`).join('')}</ul>` : ''}
-      ${f.other.length ? `<ul class="rl rother">${f.other.map(o => `<li><span class="rtg" style="background:#EFE3D9;color:var(--ink)">Note</span> ${esc(o.text)}</li>`).join('')}</ul>` : ''}</section>`;
-  }
-  $('#view').innerHTML = h;
+/* The Trip / Day report screen shows the real report (the same one that is shared and printed), not a list of tag taps. */
+function reportText(html){
+  const d = new DOMParser().parseFromString(html, 'text/html'); d.querySelectorAll('style,script').forEach(x => x.remove());
+  const BLOCK = /^(P|LI|H1|H2|H3|TR|DT|DD|DIV|SECTION|HEADER|FOOTER|UL|OL|TABLE|DL)$/;
+  const out = []; const walk = n => { for (const c of n.childNodes){ if (c.nodeType === 3) out.push(c.textContent.replace(/\s+/g, ' '));
+    else if (c.nodeType === 1){ if (c.tagName === 'LI') out.push('\n• '); else if (c.tagName === 'TD' || c.tagName === 'TH') out.push(' | '); else if (/^H[1-3]$/.test(c.tagName)) out.push('\n\n'); walk(c); if (BLOCK.test(c.tagName)) out.push('\n'); } } };
+  walk(d.body); return out.join('').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/\n \| /g, '\n').trim();
 }
-function shareReport(scope){ const r = reportMarkdown(scope); return shareFiles([new File([r.md], r.file, {type:'text/markdown'})], r.title); }
-async function copyReport(scope){ const r = reportMarkdown(scope); try { await navigator.clipboard.writeText(r.md); toast('Report copied'); } catch(e){ await shareReport(scope); } }
+function renderReport(scope){
+  const R = reportScope(scope);
+  setTop(R.day ? `${R.ms[0].dow} ${Number(R.ms[0].date.slice(8))} Oct report` : 'Trip report', true);
+  const rep = scopeReportHtml(scope);
+  $('#view').innerHTML = `<div class="rowbtns" style="justify-content:flex-end"><button class="btn ghost small" data-a="repcopy" data-s="${scope}">Copy text</button><button class="btn primary small" data-a="repshare" data-s="${scope}">Share or PDF</button></div>
+    <iframe class="repframe" title="${esc(rep.title)}" sandbox="allow-same-origin"></iframe>`;
+  const f = $('#view .repframe');
+  f.addEventListener('load', () => { const fit = () => { try { f.style.height = (f.contentDocument.documentElement.scrollHeight + 2) + 'px'; } catch(e){} }; fit(); setTimeout(fit, 300); });
+  f.srcdoc = rep.html;
+}
+function shareReport(scope){ return openReport('scope', scope); }
+async function copyReport(scope){ const t = reportText(scopeReportHtml(scope).html); try { await navigator.clipboard.writeText(t); toast('Report copied'); } catch(e){ await shareReport(scope); } }
 
 /* ---------- export / share ---------- */
 function ext(n){ if (n.type === 'audio') return (n.blob.type.includes('mp4') || n.blob.type.includes('aac')) ? 'm4a' : n.blob.type.includes('ogg') ? 'ogg' : 'webm';
@@ -1325,6 +1304,7 @@ section > h2{break-after:avoid}.scard.ref{background:var(--tint)}
 .keep{break-inside:avoid}
 .appx{margin-top:28px;padding-top:14px;border-top:3px solid var(--line);break-before:page}.appx .ah{color:var(--mute)}
 @media print{.gl dl{grid-template-columns:120px 1fr 120px 1fr;font-size:11px}}
+@media screen and (max-width:560px){table.wide thead{display:none}table.wide,table.wide tbody,table.wide tr,table.wide td{display:block;width:auto}table.wide tr{padding:10px 0;border-bottom:1px solid #eadfd6}table.wide td{border:0!important;padding:2px 0!important}table.wide td[data-l]:not([data-l=""])::before{content:attr(data-l) ": ";font-weight:600;color:#8a7466}}
 @media (max-width:560px){.sc2{grid-template-columns:1fr}.kv2{grid-template-columns:1fr}.gl dl{grid-template-columns:1fr}}
 .slide{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;break-inside:avoid}
 .slide .sh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;margin-bottom:6px}.slide .sh .m{font-size:11px;color:var(--mute)}
@@ -1352,13 +1332,10 @@ const rRaw = x => typeof x === 'string' ? x : (x && (x.text || x.what)) || '';
 function rClean(t){
   return String(t || '')
     .replace(/^Slide:\s*/, '')
+    .replace(/(\d)\s*microns?\b/gi, '$1 µm')
     .replace(/\s*\[(?:[^\]]*?\d{1,2}:\d{2}[^\]]*?|[^\]]*\bpart \d[^\]]*|team, aside|both phones|(?:Sharoon|Naveed)(?:'s)?(?: phone| recording)?)\]/gi, '')
     .replace(/\s*\((?:Sharoon|Naveed)(?: said)?:\s*["“][^)]*["”]\)/gi, '')
     .replace(/,?\s*\(?(?:in the |on the )?recording at \d{1,2}:\d{2}(?::\d{2})?\)?/gi, '')
-    // which recording or phone said what is source detail, not a finding: keep only that it needs confirming
-    .replace(/\s*\([^()]*\b(?:recordings?|phones?)\b[^()]*\)/gi, ' (to confirm)')
-    .replace(/(^|[;,—–]\s*)[^;,.()—–]*\b(?:recordings?|phones?)\b[^;,.()—–]*/gi, (m, pre) => `${pre}to confirm`)
-    .replace(/(?:\(to confirm\)\s*){2,}/g, '(to confirm) ').replace(/to confirm\s*\(to confirm\)/g, 'to confirm')
     .replace(/\s*\((?:photos?|recordings?|matches|per|see)\b[^)]*\)/gi, '')
     .replace(/\s*\([^()]*\b(?:confirmed|answered|checked|corrected) (?:by|in|on|against)\b[^()]*\)/gi, '')
     .replace(/\s*[;,]?\s*\b(?:confirmed|answered) by (?:Sharoon|Naveed)\b/gi, '')
@@ -1371,6 +1348,9 @@ function rClean(t){
 const rTxt = x => rClean(rRaw(x)).replace(/\s*\(meeting tomorrow\)/i, '');
 // app housekeeping never belongs in a report
 const rHousekeeping = t => /re-?tag|misfiled|filed (?:here|under)|tagged to this visit|which phone|stopped capturing|stopped recording|in the app|clarify|Butterfly Notes|postcode|address plate|\bmeet [^.]* at \d{1,2}[:.]\d{2}|leave by|leave \d|for the station|garbled|as spoken|gate (?:sign|photo)|signage photo/i.test(t);
+/* A line that still reads like raw source material (which recording said what, quoted speech, untranslated words)
+   is not rewritten (that breaks sentences); it moves to the appendix as 'Notes to confirm'. */
+const rSourcey = t => /\brecordings?\b|\bphones?\b|as heard|as spoken|garbled|sounds like|heard as|[一-鿿]|"[^"]{1,60}"|'\d[\d.,]*'|\(\s*[—–-]|\b\d+\s*May\b|cut off/i.test(String(t || ''));
 const tripDoc = () => results['results/trip.json'] || null;
 const visitCard = id => ((tripDoc() || {}).cards || {})[id] || ((visitBrief(id) || {}).card) || null;
 const dayExec = date => ((tripDoc() || {}).days || {})[date] || null;
@@ -1392,13 +1372,15 @@ function visitModel(id){
   for (const t of typed) for (const tg of t.tags) if (TAG_FACT[tg] && t.text) facts[TAG_FACT[tg]].push({text: t.text, src: t.by});
   if (!brief) for (const r of recs) if (r.ai) for (const [k] of FACT_KEYS) for (const x of (r.ai[k] || [])) if (!facts[k].some(y => y.text === rTxt(x))) facts[k].push({text: rTxt(x), src: 'Claude'});
   for (const [k] of FACT_KEYS) facts[k] = facts[k].filter((x, i, a) => x.text && !rHousekeeping(x.text) && a.findIndex(y => y.text === x.text) === i);
-  const follow = [...((brief && brief.follow_ups) || []).map(x => ({what: rTxt(x), owner: x.owner || ''}))].filter(f => f.what && !rHousekeeping(f.what));
+  const toConfirm = [];
+  for (const [k] of FACT_KEYS) facts[k] = facts[k].filter(x => rSourcey(x.text) ? (toConfirm.push(x.text), false) : true);
+  const follow = [...((brief && brief.follow_ups) || []).map(x => ({what: rTxt(x), owner: x.owner || ''}))].filter(f => f.what && !rHousekeeping(f.what) && (!rSourcey(f.what) || (toConfirm.push(f.what), false)));
   for (const t of typed) if (t.tags.includes('Follow-up') && t.text) follow.push({what: t.text, owner: t.by, noted: true});
-  const questions = [...((brief && brief.questions) || []).map(rTxt)].filter(q => q && !rHousekeeping(q));
+  const questions = [...((brief && brief.questions) || []).map(rTxt)].filter(q => q && !rHousekeeping(q) && (!rSourcey(q) || (toConfirm.push(q), false)));
   for (const t of typed) if (t.tags.includes('Question') && t.text && !questions.includes(t.text)) questions.push(`${t.text} (${t.by})`);
   const started = new Date(`${m.date}T${m.time.split('–')[0]}:00+08:00`).getTime() <= Date.now();
   const empty = !notes.length && !sums.length && !ins.length && !brief;
-  return {m, ins, sums, brief, recs, typed, photos, videos, facts, follow, questions, started, empty};
+  return {m, ins, sums, brief, recs, typed, photos, videos, facts, follow, questions, toConfirm, started, empty};
 }
 const rFoot = (kind) => `<footer><span>Project Butterfly · China foil-mill supplier tour · ${esc(kind)} · ${esc(fmtDateTime(Date.now()))}</span><span>Prepared from Sharoon's and Naveed's meeting recordings, photos and notes. Figures marked “to confirm” must be checked with the supplier in writing.</span></footer>`;
 const rDoc = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${RPT_CSS}</style></head><body><div class="page">${body}</div></body></html>`;
@@ -1424,7 +1406,7 @@ function rCard(id, opts = {}){
     <dl class="kv2"><dt>Price</dt><dd>${esc(c.price || 'Not quoted yet')}</dd><dt>Lead time</dt><dd>${esc(c.lead_time || 'Not given')}</dd>${c.our_take && !/^no (team )?(view|summary)/i.test(c.our_take) ? `<dt>Our take</dt><dd>${esc(c.our_take)}</dd>` : ''}${(c.need || []).length ? `<dt>We need</dt><dd><ul>${li(c.need)}</ul></dd>` : ''}</dl>
     ${opts.link ? `<p class="more">Full details: visit report ${pad2(id)}</p>` : ''}</div>`;
 }
-const rTable = (head, rows) => rows.length ? `<table class="t2"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '';
+const rTable = (head, rows) => rows.length ? `<table class="t2${head.length > 3 ? ' wide' : ''}"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((c, i) => `<td data-l="${i ? head[i] : ''}">${c}</td>`).join('')}</tr>`).join('')}</tbody></table>` : '';
 function rGlossary(text, gl){
   const used = (gl || []).filter(g => new RegExp(`\\b${g.term.split(/[\s(/]/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(text));
   return used.length ? `<section class="gl"><h2>Terms used</h2><dl>${used.map(g => `<dt>${esc(g.term)}</dt><dd>${esc(g.plain)}</dd>`).join('')}</dl></section>` : '';
@@ -1484,6 +1466,7 @@ function visitReportHtml(id, photoSrc){
   if (V.questions.length) h += `<section><h2>Still to confirm <span class="n">${V.questions.length}</span></h2><ol class="q">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
   if (!V.empty) h += `<div class="appx"><h2 class="ah">Appendix: source material</h2><p class="empty-note" style="font-style:normal">What was on the slides and diagrams, the photos, and the record of the visit as captured. Read the sections above first.</p></div>`;
   if (rest.length) h += `<section><h2>All other figures noted <span class="n">${rest.length}</span></h2><ul>${rest.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></section>`;
+  if (V.toConfirm.length) h += `<section><h2>Notes to confirm <span class="n">${V.toConfirm.length}</span></h2><p class="empty-note" style="font-style:normal">Points where the recordings were unclear or disagreed. Check them with the supplier.</p><ul>${V.toConfirm.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
   h += rSlides(V) + rViews(V) + rGallery(V, photoSrc) + rTimeline(V, photoSrc);
   return rDoc(`Visit ${pad2(id)} · ${m.name}`, h + `</main>` + rFoot(`Visit report ${pad2(id)}`));
 }
@@ -1507,7 +1490,10 @@ function scopeReportHtml(scope){
           return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol>${T.owners_note ? `<p class="src" style="margin:6px 0 0">${esc(T.owners_note)}</p>` : ''}</div>` : ''; })()}
         ${(T.shortlist || []).length ? `<h3>Who is in the running</h3>${rTable(['Equipment', 'Options', 'Where it stands'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}` : ''}
         ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${rTable(['Decision', 'Options', 'Our leaning', 'Owner', 'Decide by'], T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner || 'To assign'), esc(x.by || 'Not set')]))}${T.owners_note ? `<p class="src" style="margin:4px 0 0">${esc(T.owners_note)}</p>` : ''}` : ''}
-        ${(() => { const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, we = (T.next_steps || []).filter(x => ours.test(x.owner || '')), them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
+        ${(() => { const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
+          const we = (T.next_steps || []).filter(x => ours.test(x.owner || ''));
+          const key = t => t.toLowerCase().replace(/[^a-z ]/g, '').split(' ').filter(w => w.length > 3).slice(0, 4).join(' ');
+          for (const m of done) for (const f of visitModel(m.id).follow) if (ours.test(f.owner || '') && !we.some(x => key(x.what) === key(f.what)) && we.length < 12) we.push({what: `${f.what} (${m.name})`, owner: f.owner});
           return (we.length ? `<h3>Next steps: we do</h3>${rTable(['Step', 'Owner'], we.map(x => [esc(x.what), esc(x.owner)]))}` : '')
                + (them.length ? `<h3>Next steps: we chase</h3>${rTable(['Supplier', 'What we are waiting for', 'Chased by', 'Expected by'], them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what), esc(x.chaser || 'To assign'), esc(x.by || 'Not set')]))}` : ''); })()}</section>`;
       if (T.money && ((T.money.known || []).length || (T.money.awaiting || []).length))
@@ -1537,9 +1523,10 @@ function scopeReportHtml(scope){
     if (dec.length) h += `<section><h2>Decisions raised today</h2><ol class="q">${dec.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
     const acts = done.flatMap(m => visitModel(m.id).follow.map(f => ({...f, sup: m.name}))).slice(0, 10);
     if (acts.length) h += `<section><h2>Follow-ups from today</h2>${rTable(['Supplier', 'Action', 'Owner'], acts.map(a => [`<b>${esc(a.sup)}</b>`, esc(a.what), esc(a.owner || '')]))}</section>`;
-    if (T) h += rGlossary(h.replace(/<[^>]+>/g, ' '), T.glossary);
+    if (!done.length && !head && !hl.length) h += `<section><h2>Nothing yet</h2><p>No visit on this day has been recorded and processed yet. This report fills in after the visits.</p></section>`;
+    else if (T) h += rGlossary(h.replace(/<[^>]+>/g, ' '), T.glossary);
   }
-  return {html: rDoc(R.title, h + `</main>` + rFoot(R.day ? 'Daily report' : 'Trip report')), title: R.title, file: R.file.replace(/\.md$/, '.html'), md: reportMarkdown(scope).md};
+  return {html: rDoc(R.title, h + `</main>` + rFoot(R.day ? 'Daily report' : 'Trip report')), title: R.title, file: R.file.replace(/\.md$/, '.html'), md: ''};
 }
 /* Photos for the visit report: this phone's from storage, the other phone's from the sync repo when online. Downscaled so the file stays light. */
 async function photoDataUrls(id){
@@ -1581,7 +1568,7 @@ async function shareReportFile(){
   if (navigator.share){ try { await navigator.share({title: rpt.title, text: rpt.md}); return; } catch(e){ if (e.name === 'AbortError') return; } }
   copyReportText();
 }
-async function copyReportText(){ if (!rpt) return; try { await navigator.clipboard.writeText(rpt.md); toast('Copied as text'); } catch(e){ toast('Couldn\'t copy here', 3000); } }
+async function copyReportText(){ if (!rpt) return; try { await navigator.clipboard.writeText(rpt.md || reportText(rpt.html)); toast('Copied as text'); } catch(e){ toast('Couldn\'t copy here', 3000); } }
 window.addEventListener('hashchange', () => { if (rpt) closeReport(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && rpt) closeReport(); });
 /* PDF: iOS home-screen apps can't print, so the phone renders the report to A4 pages itself (html2canvas + jsPDF, cached
@@ -1615,7 +1602,7 @@ async function buildPdf(r){
     //    and never leave a heading alone at the bottom of a page
     const mm = 10, cw = 210 - 2 * mm, pageCss = Math.floor((297 - 2 * mm - 6) / cw * W);   // CSS px of content per A4 page
     const top = el => el.getBoundingClientRect().top + d.defaultView.scrollY, bot = el => el.getBoundingClientRect().bottom + d.defaultView.scrollY;
-    const atoms = [...d.querySelectorAll('tr, .scard, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
+    const atoms = [...d.querySelectorAll('tr, .scard, .keep, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
       .map(el => [top(el), bot(el)]).filter(([a, b]) => b - a > 0 && b - a < pageCss * 0.9);
     const heads = [...d.querySelectorAll('h2, h3, .scard .sch, thead')].map(el => [top(el), bot(el)]);
     const ok = y => !atoms.some(([a, b]) => a < y - 1 && b > y + 1);
