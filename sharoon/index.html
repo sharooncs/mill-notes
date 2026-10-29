@@ -1320,6 +1320,7 @@ section > h2{break-after:avoid}.scard.ref{background:var(--tint)}
 .sc2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0}.sc2 ul{margin:4px 0 0;padding-left:18px}.sc2 li{margin:2px 0}
 .kv2{display:grid;grid-template-columns:92px 1fr;gap:4px 12px;margin:8px 0 0;font-size:13.5px}.kv2 dt{font-weight:700;color:var(--ink2)}.kv2 dd{margin:0}.kv2 ul{margin:0;padding-left:18px}
 .gl dl{display:grid;grid-template-columns:160px 1fr;gap:4px 12px;font-size:12.5px}.gl dt{font-weight:700}.gl dd{margin:0;color:var(--ink2)}
+.first{background:var(--mintbg);border-radius:10px;padding:8px 12px;margin:10px 0;font-size:13.5px}.first ol{margin:4px 0 0;padding-left:20px}
 .budget{background:#FFF3F0;border-left:4px solid #B3261E;border-radius:4px 10px 10px 4px;padding:8px 12px;margin:10px 0;font-size:13.5px}
 .keep{break-inside:avoid}
 .appx{margin-top:28px;padding-top:14px;border-top:3px solid var(--line);break-before:page}.appx .ah{color:var(--mute)}
@@ -1351,7 +1352,9 @@ const rRaw = x => typeof x === 'string' ? x : (x && (x.text || x.what)) || '';
 function rClean(t){
   return String(t || '')
     .replace(/^Slide:\s*/, '')
-    .replace(/\s*\[(?:[^\]]*?\d{1,2}:\d{2}[^\]]*?|part \d[^\]]*|team, aside)\]/gi, '')
+    .replace(/\s*\[(?:[^\]]*?\d{1,2}:\d{2}[^\]]*?|[^\]]*\bpart \d[^\]]*|team, aside|both phones|(?:Sharoon|Naveed)(?:'s)?(?: phone| recording)?)\]/gi, '')
+    .replace(/\s*\((?:Sharoon|Naveed)(?: said)?:\s*["“][^)]*["”]\)/gi, '')
+    .replace(/,?\s*\(?(?:in the |on the )?recording at \d{1,2}:\d{2}(?::\d{2})?\)?/gi, '')
     .replace(/\s*\((?:photos?|recordings?|matches|per|see)\b[^)]*\)/gi, '')
     .replace(/\s*\([^()]*\b(?:confirmed|answered|checked|corrected) (?:by|in|on|against)\b[^()]*\)/gi, '')
     .replace(/\s*[;,]?\s*\b(?:confirmed|answered) by (?:Sharoon|Naveed)\b/gi, '')
@@ -1469,7 +1472,7 @@ function visitReportHtml(id, photoSrc){
       ${m.contact ? `<div><span>Contact</span>${esc(m.contact)}</div>` : ''}<div><span>Source material</span>${esc(counts)}</div></div></header><main>`;
   h += visitCard(id) ? `<section class="brief1"><h2>At a glance</h2>${rCard(id)}</section>` : '';
   h += visitCard(id) ? '' : `<section><h2>Bottom line</h2>${b && b.headline ? `<div class="bluf"><span class="ai">✦ Claude</span><div class="head">${esc(rTxt(b.headline))}</div>${b.offer ? `<p>${esc(rTxt(b.offer))}</p>` : ''}${(b.bullets || []).length ? `<ul>${b.bullets.map(x => `<li>${esc(rTxt(x))}</li>`).join('')}</ul>` : ''}</div>`
-    : V.sums.length ? `<div class="bluf"><div class="head">${esc(V.sums[0].text.split('\n')[0])}</div><p>${esc(V.sums[0].by)}'s summary</p></div>` : `<p class="empty-note">No brief yet: it appears after the recordings and notes are processed.</p>`}</section>`;
+    : V.sums.length ? `<div class="bluf"><div class="head">${esc(V.sums[0].text.split('\n')[0])}</div><p>${esc(V.sums[0].by)}'s summary</p></div>` : `<p class="empty-note">${m.cancelled ? 'Cancelled; nothing captured.' : V.started ? 'Nothing was captured at this visit.' : 'Not visited yet.'}</p>`}</section>`;
   const isRef = (visitCard(id) || {}).kind === 'reference', TOP = 8;
   const top = {}, rest = []; for (const [k] of FACT_KEYS){ const clean = V.facts[k].filter(x => !rHousekeeping(x.text)); top[k] = k === 'specs' ? clean.slice(0, TOP) : clean; if (k === 'specs') rest.push(...clean.slice(TOP)); }
   if (!isRef) h += `<section><h2>Facts we have</h2>${rFacts(top)}</section>`;
@@ -1496,11 +1499,13 @@ function scopeReportHtml(scope){
         ${(T.basis || []).length ? `<div class="basis"><div class="lab">What we are planning</div><ul>${T.basis.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
         ${T.verdict ? `<p class="verdict"><b>Verdict.</b> ${esc(T.verdict)}</p>` : ''}
         ${T.budget ? `<div class="budget"><div class="lab warn">Cost</div>${esc(T.budget)}</div>` : ''}
+        ${(() => { const ours = (T.next_steps || []).filter(x => /^(Sharoon|Naveed|Both|Team|Us)$/i.test(x.owner || '')).slice(0, 3);
+          return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol></div>` : ''; })()}
         ${(T.shortlist || []).length ? `<h3>Who is in the running</h3>${rTable(['Equipment', 'Options', 'Where it stands'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}` : ''}
         ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${rTable(['Decision', 'Options', 'Our leaning', 'Owner', 'Decide by'], T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner || 'To assign'), esc(x.by || 'Not set')]))}` : ''}
         ${(() => { const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, we = (T.next_steps || []).filter(x => ours.test(x.owner || '')), them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
           return (we.length ? `<h3>Next steps: we do</h3>${rTable(['Step', 'Owner'], we.map(x => [esc(x.what), esc(x.owner)]))}` : '')
-               + (them.length ? `<h3>Next steps: we chase</h3>${rTable(['Supplier', 'What we are waiting for'], them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what)]))}` : ''); })()}</section>`;
+               + (them.length ? `<h3>Next steps: we chase</h3>${rTable(['Supplier', 'What we are waiting for', 'Chased by', 'Expected by'], them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what), esc(x.chaser || 'To assign'), esc(x.by || 'Not set')]))}` : ''); })()}</section>`;
       if (T.money && ((T.money.known || []).length || (T.money.awaiting || []).length))
         h += `<section class="keep"><h2>Money and timing</h2><div class="sc2"><div><div class="lab ok">What we have</div><ul>${(T.money.known || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab warn">Still waiting for</div><ul>${(T.money.awaiting || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>`;
       for (const c of [...cats, 'Other suppliers']){ const ids = done.map(m => m.id).filter(id => !isRef(id) && catOf(id) === c);
@@ -1589,28 +1594,51 @@ async function buildPdf(r){
     await new Promise(res => { f.onload = res; f.srcdoc = r.html; });
     const d = f.contentDocument;
     // apply the report's own print styles (html2canvas renders the screen media)
+    // apply the report's print styles as a real <style> element: html2canvas copies the page's style text, not rules added via insertRule,
+    // so this keeps the measured layout and the rendered layout identical (otherwise page cuts land inside rows)
+    let printCss = '';
     for (const sh of [...d.styleSheets]) { let rules; try { rules = [...sh.cssRules]; } catch(e){ continue; }
-      for (const ru of rules) if (ru.media && /print/.test(ru.media.mediaText)) for (const inner of [...ru.cssRules]) { try { sh.insertRule(inner.cssText, sh.cssRules.length); } catch(e){} } }
+      for (const ru of rules) if (ru.media && /print/.test(ru.media.mediaText)) for (const inner of [...ru.cssRules]) printCss += inner.cssText + '\n'; }
+    const ps = d.createElement('style'); ps.textContent = printCss; d.head.appendChild(ps);
     d.documentElement.style.background = '#fff'; d.body.style.background = '#fff';
     const fix = d.createElement('style'); fix.textContent = '*{font-variant-numeric:normal!important;font-feature-settings:normal!important;letter-spacing:normal!important;text-rendering:geometricPrecision}'; d.head.appendChild(fix); // html2canvas mis-spaces these
     try { await d.fonts.ready; } catch(e){}
     await Promise.all([...d.images].map(i => i.complete ? 0 : new Promise(x => { i.onload = i.onerror = x; })));
-    const H = d.documentElement.scrollHeight; f.style.height = H + 'px';
-    const scale = 2, canvas = await window.html2canvas(d.body, {scale, width: W, windowWidth: W, height: H, windowHeight: H, backgroundColor: '#ffffff', useCORS: true, logging: false});
-    // cut between blocks, never through a line: candidate cut points are the bottoms of sections, rows, items and paragraphs
-    const cuts = [...d.querySelectorAll('section,header,.panel,.card,tr,li,p,h2,h3,figure,img,.q,.take')].map(el => Math.round((el.getBoundingClientRect().bottom + d.defaultView.scrollY) * scale)).sort((a, b) => a - b);
-    const {jsPDF} = window.jspdf, pdf = new jsPDF({unit: 'mm', format: 'a4', compress: true});
-    const mm = 10, cw = 210 - 2 * mm, pageH = Math.floor((297 - 2 * mm) / cw * canvas.width);
-    let y = 0, page = 0;
-    while (y < canvas.height - 4){
-      let end = Math.min(canvas.height, y + pageH);
-      if (end < canvas.height){ const best = cuts.filter(c => c > y + pageH * 0.55 && c <= y + pageH).pop(); if (best) end = best; }
-      const sl = document.createElement('canvas'); sl.width = canvas.width; sl.height = end - y;
-      const g = sl.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, sl.width, sl.height); g.drawImage(canvas, 0, y, sl.width, sl.height, 0, 0, sl.width, sl.height);
-      if (page++) pdf.addPage();
-      pdf.addImage(sl.toDataURL('image/jpeg', 0.9), 'JPEG', mm, mm, cw, sl.height * cw / sl.width);
-      pdf.setFontSize(8); pdf.setTextColor(140); pdf.text(`${r.title} · page ${page}`, mm, 297 - 5);
-      y = end;
+    const H = d.documentElement.scrollHeight; f.style.height = H + 'px'; await new Promise(r => setTimeout(r, 50));
+    // 1. plan the pages: break only between whole blocks (table rows, cards, paragraphs, list items), never through one,
+    //    and never leave a heading alone at the bottom of a page
+    const mm = 10, cw = 210 - 2 * mm, pageCss = Math.floor((297 - 2 * mm - 6) / cw * W);   // CSS px of content per A4 page
+    const top = el => el.getBoundingClientRect().top + d.defaultView.scrollY, bot = el => el.getBoundingClientRect().bottom + d.defaultView.scrollY;
+    const atoms = [...d.querySelectorAll('tr, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
+      .map(el => [top(el), bot(el)]).filter(([a, b]) => b - a > 0 && b - a < pageCss * 0.9);
+    const heads = [...d.querySelectorAll('h2, h3, .scard .sch, thead')].map(el => [top(el), bot(el)]);
+    const ok = y => !atoms.some(([a, b]) => a < y - 1 && b > y + 1);
+    const cuts = [...new Set(atoms.map(([, b]) => Math.ceil(b)).concat(atoms.map(([a]) => Math.floor(a))))].filter(ok).sort((a, b) => a - b);
+    const pages = []; let y = 0;
+    while (y < H - 2){
+      let end = y + pageCss;
+      if (end < H){
+        const c = cuts.filter(x => x > y + pageCss * 0.35 && x <= y + pageCss);
+        end = c.length ? c[c.length - 1] : end;
+        const orphan = heads.find(([a, b]) => b <= end + 2 && b >= end - 40 && a > y);     // heading right before the cut: move it to the next page
+        if (orphan && orphan[0] > y + pageCss * 0.35) end = Math.floor(orphan[0]) - 2;
+      } else end = H;
+      pages.push([y, end]); y = end;
+    }
+    // 2. render each page on its own (no giant canvas, so nothing is ever cut off), and lay the page's text underneath so the PDF can be searched and copied
+    const {jsPDF} = window.jspdf, pdf = new jsPDF({unit: 'mm', format: 'a4', compress: true}), k = cw / W, scale = 2;
+    const textEls = [...d.querySelectorAll('h1, h2, h3, p, li, td, th, dt, dd, .budget, .cov, footer span')].filter(el => !el.querySelector('p, li, td, dt, dd'));
+    for (let n = 0; n < pages.length; n++){
+      const [a, b] = pages[n];
+      const canvas = await window.html2canvas(d.body, {scale, x: 0, y: a, width: W, height: b - a, windowWidth: W, windowHeight: H, backgroundColor: '#ffffff', useCORS: true, logging: false});
+      if (n) pdf.addPage();
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', mm, mm, cw, (b - a) * k);
+      pdf.setFontSize(8);
+      for (const el of textEls){ const t0 = top(el); if (t0 < a - 1 || t0 >= b - 1) continue;
+        const txt = (el.innerText || '').replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/×/g, 'x').replace(/→/g, '->').replace(/≈|~/g, 'approx. ').replace(/µ/g, 'u').replace(/[^\x20-\xFF\n]/g, ' ').replace(/[ \t]+/g, ' ').trim(); if (!txt) continue;
+        const r = el.getBoundingClientRect();
+        pdf.text(pdf.splitTextToSize(txt, Math.max(20, r.width * k)), mm + r.left * k, mm + (t0 - a) * k + 2.5, {renderingMode: 'invisible', baseline: 'alphabetic'}); }
+      pdf.setTextColor(140); pdf.text(`${r.title} · page ${n + 1} of ${pages.length}`, mm, 297 - 5, {renderingMode: 'fill'}); pdf.setTextColor(0);
     }
     return new File([pdf.output('blob')], r.file.replace(/\.html$/, '.pdf'), {type: 'application/pdf'});
   } finally { f.remove(); }
