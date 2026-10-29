@@ -1355,6 +1355,10 @@ function rClean(t){
     .replace(/\s*\[(?:[^\]]*?\d{1,2}:\d{2}[^\]]*?|[^\]]*\bpart \d[^\]]*|team, aside|both phones|(?:Sharoon|Naveed)(?:'s)?(?: phone| recording)?)\]/gi, '')
     .replace(/\s*\((?:Sharoon|Naveed)(?: said)?:\s*["“][^)]*["”]\)/gi, '')
     .replace(/,?\s*\(?(?:in the |on the )?recording at \d{1,2}:\d{2}(?::\d{2})?\)?/gi, '')
+    // which recording or phone said what is source detail, not a finding: keep only that it needs confirming
+    .replace(/\s*\([^()]*\b(?:recordings?|phones?)\b[^()]*\)/gi, ' (to confirm)')
+    .replace(/(^|[;,—–]\s*)[^;,.()—–]*\b(?:recordings?|phones?)\b[^;,.()—–]*/gi, (m, pre) => `${pre}to confirm`)
+    .replace(/(?:\(to confirm\)\s*){2,}/g, '(to confirm) ').replace(/to confirm\s*\(to confirm\)/g, 'to confirm')
     .replace(/\s*\((?:photos?|recordings?|matches|per|see)\b[^)]*\)/gi, '')
     .replace(/\s*\([^()]*\b(?:confirmed|answered|checked|corrected) (?:by|in|on|against)\b[^()]*\)/gi, '')
     .replace(/\s*[;,]?\s*\b(?:confirmed|answered) by (?:Sharoon|Naveed)\b/gi, '')
@@ -1500,7 +1504,7 @@ function scopeReportHtml(scope){
         ${T.verdict ? `<p class="verdict"><b>Verdict.</b> ${esc(T.verdict)}</p>` : ''}
         ${T.budget ? `<div class="budget"><div class="lab warn">Cost</div>${esc(T.budget)}</div>` : ''}
         ${(() => { const ours = (T.next_steps || []).filter(x => /^(Sharoon|Naveed|Both|Team|Us)$/i.test(x.owner || '')).slice(0, 3);
-          return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol></div>` : ''; })()}
+          return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol>${T.owners_note ? `<p class="src" style="margin:6px 0 0">${esc(T.owners_note)}</p>` : ''}</div>` : ''; })()}
         ${(T.shortlist || []).length ? `<h3>Who is in the running</h3>${rTable(['Equipment', 'Options', 'Where it stands'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}` : ''}
         ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${rTable(['Decision', 'Options', 'Our leaning', 'Owner', 'Decide by'], T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner || 'To assign'), esc(x.by || 'Not set')]))}${T.owners_note ? `<p class="src" style="margin:4px 0 0">${esc(T.owners_note)}</p>` : ''}` : ''}
         ${(() => { const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, we = (T.next_steps || []).filter(x => ours.test(x.owner || '')), them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
@@ -1629,7 +1633,7 @@ async function buildPdf(r){
     }
     // 2. render each page on its own (no giant canvas, so nothing is ever cut off), and lay the page's text underneath so the PDF can be searched and copied
     const {jsPDF} = window.jspdf, pdf = new jsPDF({unit: 'mm', format: 'a4', compress: true}), k = cw / W, scale = 2;
-    const textEls = [...d.querySelectorAll('h1, h2, h3, p, li, td, th, dt, dd, .budget, .cov, footer span')].filter(el => !el.querySelector('p, li, td, dt, dd'));
+    const textEls = [...d.querySelectorAll('h1, h2, h3, p, li, td, th, dt, dd, .lab, .budget, .cov, .sch .when, footer span')].filter(el => !el.querySelector('p, li, td, dt, dd'));
     for (let n = 0; n < pages.length; n++){
       const [a, b] = pages[n];
       const canvas = await window.html2canvas(d.body, {scale, x: 0, y: a, width: W, height: b - a, windowWidth: W, windowHeight: H, backgroundColor: '#ffffff', useCORS: true, logging: false});
@@ -1637,7 +1641,7 @@ async function buildPdf(r){
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', mm, mm, cw, (b - a) * k);
       pdf.setFontSize(8);
       for (const el of textEls){ const t0 = top(el); if (t0 < a - 1 || t0 >= b - 1) continue;
-        const txt = (el.innerText || '').replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/×/g, 'x').replace(/→/g, '->').replace(/≈|~/g, 'approx. ').replace(/µ/g, 'u').replace(/[^\x20-\xFF\n]/g, ' ').replace(/[ \t]+/g, ' ').trim(); if (!txt) continue;
+        const txt = (el.innerText || '').replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/×/g, 'x').replace(/→/g, '->').replace(/≈|~/g, 'approx. ').replace(/[^\x20-\xFF\n]/g, ' ').replace(/[ \t]+/g, ' ').trim(); if (!txt) continue;
         const r = el.getBoundingClientRect();
         pdf.text(pdf.splitTextToSize(txt, Math.max(20, r.width * k)), mm + r.left * k, mm + (t0 - a) * k + 2.5, {renderingMode: 'invisible', baseline: 'alphabetic'}); }
       pdf.setTextColor(140); pdf.text(`${r.title} · page ${n + 1} of ${pages.length}`, mm, 297 - 5, {renderingMode: 'fill'});
