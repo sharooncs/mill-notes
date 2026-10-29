@@ -1475,10 +1475,10 @@ function visitReportHtml(id, photoSrc){
     : V.sums.length ? `<div class="bluf"><div class="head">${esc(V.sums[0].text.split('\n')[0])}</div><p>${esc(V.sums[0].by)}'s summary</p></div>` : `<p class="empty-note">${m.cancelled ? 'Cancelled; nothing captured.' : V.started ? 'Nothing was captured at this visit.' : 'Not visited yet.'}</p>`}</section>`;
   const isRef = (visitCard(id) || {}).kind === 'reference', TOP = 8;
   const top = {}, rest = []; for (const [k] of FACT_KEYS){ const clean = V.facts[k].filter(x => !rHousekeeping(x.text)); top[k] = k === 'specs' ? clean.slice(0, TOP) : clean; if (k === 'specs') rest.push(...clean.slice(TOP)); }
-  if (!isRef) h += `<section><h2>Facts we have</h2>${rFacts(top)}</section>`;
-  h += `<section><h2>Follow-ups <span class="n">${V.follow.length}</span></h2>${rActions(V.follow)}</section>`;
+  if (!isRef && !V.empty) h += `<section><h2>Facts we have</h2>${rFacts(top)}</section>`;
+  if (!V.empty) h += `<section><h2>Follow-ups <span class="n">${V.follow.length}</span></h2>${rActions(V.follow)}</section>`;
   if (V.questions.length) h += `<section><h2>Still to confirm <span class="n">${V.questions.length}</span></h2><ol class="q">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
-  h += `<div class="appx"><h2 class="ah">Appendix: source material</h2><p class="empty-note" style="font-style:normal">What was on the slides and diagrams, the photos, and the record of the visit as captured. Read the sections above first.</p></div>`;
+  if (!V.empty) h += `<div class="appx"><h2 class="ah">Appendix: source material</h2><p class="empty-note" style="font-style:normal">What was on the slides and diagrams, the photos, and the record of the visit as captured. Read the sections above first.</p></div>`;
   if (rest.length) h += `<section><h2>All other figures noted <span class="n">${rest.length}</span></h2><ul>${rest.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></section>`;
   h += rSlides(V) + rViews(V) + rGallery(V, photoSrc) + rTimeline(V, photoSrc);
   return rDoc(`Visit ${pad2(id)} · ${m.name}`, h + `</main>` + rFoot(`Visit report ${pad2(id)}`));
@@ -1502,7 +1502,7 @@ function scopeReportHtml(scope){
         ${(() => { const ours = (T.next_steps || []).filter(x => /^(Sharoon|Naveed|Both|Team|Us)$/i.test(x.owner || '')).slice(0, 3);
           return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol></div>` : ''; })()}
         ${(T.shortlist || []).length ? `<h3>Who is in the running</h3>${rTable(['Equipment', 'Options', 'Where it stands'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}` : ''}
-        ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${rTable(['Decision', 'Options', 'Our leaning', 'Owner', 'Decide by'], T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner || 'To assign'), esc(x.by || 'Not set')]))}` : ''}
+        ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${rTable(['Decision', 'Options', 'Our leaning', 'Owner', 'Decide by'], T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner || 'To assign'), esc(x.by || 'Not set')]))}${T.owners_note ? `<p class="src" style="margin:4px 0 0">${esc(T.owners_note)}</p>` : ''}` : ''}
         ${(() => { const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, we = (T.next_steps || []).filter(x => ours.test(x.owner || '')), them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
           return (we.length ? `<h3>Next steps: we do</h3>${rTable(['Step', 'Owner'], we.map(x => [esc(x.what), esc(x.owner)]))}` : '')
                + (them.length ? `<h3>Next steps: we chase</h3>${rTable(['Supplier', 'What we are waiting for', 'Chased by', 'Expected by'], them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what), esc(x.chaser || 'To assign'), esc(x.by || 'Not set')]))}` : ''); })()}</section>`;
@@ -1604,12 +1604,14 @@ async function buildPdf(r){
     const fix = d.createElement('style'); fix.textContent = '*{font-variant-numeric:normal!important;font-feature-settings:normal!important;letter-spacing:normal!important;text-rendering:geometricPrecision}'; d.head.appendChild(fix); // html2canvas mis-spaces these
     try { await d.fonts.ready; } catch(e){}
     await Promise.all([...d.images].map(i => i.complete ? 0 : new Promise(x => { i.onload = i.onerror = x; })));
+    // the page footer becomes a printed line on the last PDF page, so it never sits alone on a page of its own
+    const foot = d.querySelector('footer'), footText = foot ? [...foot.querySelectorAll('span')].map(x => x.innerText.trim()).filter(Boolean) : []; if (foot) foot.remove();
     const H = d.documentElement.scrollHeight; f.style.height = H + 'px'; await new Promise(r => setTimeout(r, 50));
     // 1. plan the pages: break only between whole blocks (table rows, cards, paragraphs, list items), never through one,
     //    and never leave a heading alone at the bottom of a page
     const mm = 10, cw = 210 - 2 * mm, pageCss = Math.floor((297 - 2 * mm - 6) / cw * W);   // CSS px of content per A4 page
     const top = el => el.getBoundingClientRect().top + d.defaultView.scrollY, bot = el => el.getBoundingClientRect().bottom + d.defaultView.scrollY;
-    const atoms = [...d.querySelectorAll('tr, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
+    const atoms = [...d.querySelectorAll('tr, .scard, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
       .map(el => [top(el), bot(el)]).filter(([a, b]) => b - a > 0 && b - a < pageCss * 0.9);
     const heads = [...d.querySelectorAll('h2, h3, .scard .sch, thead')].map(el => [top(el), bot(el)]);
     const ok = y => !atoms.some(([a, b]) => a < y - 1 && b > y + 1);
@@ -1638,7 +1640,10 @@ async function buildPdf(r){
         const txt = (el.innerText || '').replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/×/g, 'x').replace(/→/g, '->').replace(/≈|~/g, 'approx. ').replace(/µ/g, 'u').replace(/[^\x20-\xFF\n]/g, ' ').replace(/[ \t]+/g, ' ').trim(); if (!txt) continue;
         const r = el.getBoundingClientRect();
         pdf.text(pdf.splitTextToSize(txt, Math.max(20, r.width * k)), mm + r.left * k, mm + (t0 - a) * k + 2.5, {renderingMode: 'invisible', baseline: 'alphabetic'}); }
-      pdf.setTextColor(140); pdf.text(`${r.title} · page ${n + 1} of ${pages.length}`, mm, 297 - 5, {renderingMode: 'fill'}); pdf.setTextColor(0);
+      pdf.setTextColor(140); pdf.text(`${r.title} · page ${n + 1} of ${pages.length}`, mm, 297 - 5, {renderingMode: 'fill'});
+      if (n === pages.length - 1 && footText.length){ pdf.setFontSize(7); const clean = t => t.replace(/[–—]/g, '-').replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[^\x20-\xFF]/g, ' ');
+        const lines = footText.flatMap(t => pdf.splitTextToSize(clean(t), cw)); pdf.text(lines, mm, 297 - 9 - 3 * (lines.length - 1), {renderingMode: 'fill'}); }
+      pdf.setTextColor(0);
     }
     return new File([pdf.output('blob')], r.file.replace(/\.html$/, '.pdf'), {type: 'application/pdf'});
   } finally { f.remove(); }
