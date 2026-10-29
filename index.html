@@ -211,6 +211,9 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .mark{font-family:var(--mono);font-size:13px;padding:8px 11px;min-height:44px;border-radius:12px;background:var(--glass-hi);color:var(--ink);border:1px solid var(--hair)}
 .mark b{color:#C2452A}
 .note-card .ft{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.movebox{display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid var(--hair)}.movebox label{font-size:14px;font-weight:700}
+.movebox select{min-height:44px;border-radius:13px;border:1.5px solid var(--hair);padding:0 10px;font:inherit;font-size:16px;background:#fff}
+.movebox .mvchk{font-weight:600;display:flex;gap:8px;align-items:center}.movebox .rowbtns{display:flex;gap:8px;justify-content:flex-end}
 .note-card details summary{font-size:13px;color:var(--ink2);cursor:pointer;font-weight:700}
 .transcript{width:100%;min-height:80px;background:rgba(255,255,255,.65);border:1px solid var(--hair);border-radius:14px;padding:10px;font-size:15px}
 .tagline{display:flex;gap:6px;flex-wrap:wrap}
@@ -539,6 +542,20 @@ function fmtBytes(b){ return b > 1e9 ? (b/1e9).toFixed(2)+' GB' : b > 1e6 ? (b/1
 function mins(hhmm){ const [h,m] = hhmm.split(':').map(Number); return h*60+m; }
 
 function currentMeeting(){
+  const pick = scheduleMeeting();
+  // You go where you checked in: if today's latest check-in (either phone) came after the scheduled visit's start, that visit is current.
+  const {date: today} = cn(Date.now());
+  const ins = [...Object.values(meetingState).filter(x => x.checkedIn && x.at).map(x => ({id: x.id, at: x.at})),
+               ...remoteMeetings().filter(x => x.checkedIn && x.at).map(x => ({id: x.id, at: x.at}))]
+    .filter(x => cn(x.at).date === today && Date.now() - x.at < 6 * 3600e3).sort((a, b) => b.at - a.at);
+  const last = ins[0] && MEETINGS.find(m => m.id === ins[0].id);
+  if (last && last.id !== pick.m.id && pick.m.date === today){
+    const start = mins(pick.m.time.split('–')[0]), at = cn(ins[0].at).mins;
+    if (at > start) return {m: last, why: 'Checked in'};
+  }
+  return pick;
+}
+function scheduleMeeting(){
   const {date: today, mins: cur} = cn(Date.now());
   const span = m => { const [a,b] = m.time.split('–'); return [mins(a), mins(b)]; };
   const todays = MEETINGS.filter(m => m.date === today);
@@ -793,7 +810,7 @@ function noteHtml(n){
   return `<article class="note-card${ak ? ' k-' + ak : ''}" data-id="${n.id}">
     <div class="hd">${kindHtml}<span>${fmtTime(n.createdAt)}${extra}</span><span class="sp"></span><span class="by">${esc(n.by || '')}</span></div>
     ${ak ? `<div class="kindnote">${AKIND[ak].note}</div>` : ''}${tags}${body}
-    <div class="ft">${n.blob ? `<button class="btn ghost small" data-a="share" data-n="${n.id}">Share</button>` : ''}<button class="btn ghost small" data-a="caption" data-n="${n.id}">${n.type === 'text' ? 'Edit' : 'Caption'}</button><button class="btn danger small" data-a="del" data-n="${n.id}" aria-label="Delete">${ICON.trash}</button></div>
+    <div class="ft">${n.blob ? `<button class="btn ghost small" data-a="share" data-n="${n.id}">Share</button>` : ''}<button class="btn ghost small" data-a="caption" data-n="${n.id}">${n.type === 'text' ? 'Edit' : 'Caption'}</button><button class="btn ghost small" data-a="move" data-n="${n.id}">Move</button><button class="btn danger small" data-a="del" data-n="${n.id}" aria-label="Delete">${ICON.trash}</button></div>
   </article>`;
 }
 
@@ -847,6 +864,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'undo'){ await patchMeeting(mid, {checkedIn: false}); render(); return; }
   if (a === 'share') return shareNote(nid);
   if (a === 'caption') return captionNote(nid);
+  if (a === 'move') return moveNote(nid);
   if (a === 'del') return deleteNote(nid, b);
   if (a === 'export') return exportMeeting(mid);
   if (a === 'sharesum'){ summaryFlush?.(); return openReport('visit', mid); }
@@ -957,6 +975,28 @@ function openComposer(mid, existing){
     toast('Saved'); render();
   };
   slot.scrollIntoView({block:'center'});
+}
+/* Move a note to the visit it belongs to (e.g. recorded while the app still showed the previous visit).
+   A recording takes the photos, videos and notes captured during it along, if you tick the box. */
+async function moveNote(nid){
+  const card = document.querySelector(`.note-card[data-id="${nid}"]`); if (!card || card.querySelector('.movebox')) return;
+  const n = Object.values(noteCache).flat().find(x => x.id === nid && !x.remote); if (!n) return;
+  const during = n.type === 'audio' ? (noteCache[n.meetingId] || []).filter(x => !x.remote && x.id !== n.id && x.type !== 'audio' && x.createdAt >= n.createdAt - 5000 && x.createdAt <= n.createdAt + (n.duration || 0) * 1000 + 60000) : [];
+  const opts = MEETINGS.filter(m => m.id !== n.meetingId).sort((a, b) => Math.abs(new Date(a.date) - new Date(cn(n.createdAt).date)) - Math.abs(new Date(b.date) - new Date(cn(n.createdAt).date)) || a.id - b.id);
+  const box = document.createElement('div'); box.className = 'movebox';
+  box.innerHTML = `<label for="mv-${nid}">Move to</label><select id="mv-${nid}">${opts.map(m => `<option value="${m.id}">${pad2(m.id)} · ${esc(m.name)} · ${esc(m.dow)}</option>`).join('')}</select>
+    ${during.length ? `<label class="mvchk"><input type="checkbox" id="mvd-${nid}" checked> Also move the ${plural(during.length, 'photo, video or note')} taken during this recording</label>` : ''}
+    <div class="rowbtns"><button class="btn ghost small" data-mv="cancel">Cancel</button><button class="btn primary small" data-mv="go">Move</button></div>`;
+  card.querySelector('.ft').hidden = true; card.appendChild(box);
+  box.addEventListener('click', async e => {
+    const b = e.target.closest('[data-mv]'); if (!b) return;
+    if (b.dataset.mv === 'cancel'){ box.remove(); card.querySelector('.ft').hidden = false; return; }
+    const to = Number(box.querySelector('select').value), also = during.length && box.querySelector(`#mvd-${nid}`)?.checked;
+    const ids = [n.id, ...(also ? during.map(x => x.id) : [])];
+    for (const id of ids){ const x = await get('notes', id); if (x){ x.meetingId = to; await put('notes', x); } }
+    await loadState(); scheduleSync(1500);
+    toast(`Moved ${plural(ids.length, 'item')} to ${MEETINGS.find(m => m.id === to).name}`, 4000); render();
+  });
 }
 async function captionNote(nid){
   const n = await get('notes', nid); if (!n) return;
@@ -1954,7 +1994,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.8';
+const APP_VERSION = '3.9';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
