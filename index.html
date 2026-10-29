@@ -350,6 +350,9 @@ textarea.note{width:100%;min-height:110px;background:rgba(255,255,255,.65);borde
 .pstrip figure{margin:0;display:flex;flex-direction:column;gap:6px}
 .pstrip img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px}
 .pstrip figcaption{font-size:13px;color:var(--ink2);line-height:1.35}
+.pread{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:12px;border-radius:14px;background:rgba(255,255,255,.75);border:1px solid var(--stroke)}
+.pread .prh{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.pread .prt{font-size:15px}.pread p{margin:0;font-size:14px}
+.ptxt{white-space:pre-wrap;font:13px/1.45 var(--font);margin:6px 0 0;padding:8px;border-radius:10px;background:var(--glass-hi)}.ptxt.en{color:var(--ink2)}
 .clar{border:2px solid rgba(110,79,216,.45);background:linear-gradient(180deg,#F7F4FF,#EFEAFF)}
 .clar .eyebrow{color:#5B3FC4}
 .cq{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-top:1px solid rgba(110,79,216,.18)}
@@ -706,7 +709,7 @@ function remoteNoteHtml(n){
   const ak = n.type === 'audio' ? akind(n) : null, k = ak ? AKIND[ak].icon : {photo:'cam', video:'vid', text:'txt'}[n.type];
   const kindHtml = ak ? `<span class="kindbadge ${ak}">${ICON[AKIND[ak].icon]}${ak === 'memo' ? 'Voice note' : 'Meeting'}</span>` : `<span class="kindbadge ${n.type}">${ICON[k]}${{text:'Note', photo:'Photo', video:'Video'}[n.type]}</span>`;
   let body = n.type === 'text' ? `<p>${esc(n.text || '')}</p>` : n.text ? `<p class="capline" style="color:var(--ink2);font-size:15px">${esc(n.text)}</p>` : '';
-  if (n.type === 'photo' && n.media) body = `<button class="btn ghost small" data-remote-photo="${esc(n.media.path)}" data-parts="${n.media.parts || 1}">Show ${esc(n.owner || 'their')}'s photo</button>` + momentHtml(n) + body;
+  if (n.type === 'photo' && n.media) body = `<button class="btn ghost small" data-remote-photo="${esc(n.media.path)}" data-parts="${n.media.parts || 1}">Show ${esc(n.owner || 'their')}'s photo</button>` + momentHtml(n) + photoReadHtml(n) + body;
   if (ak) body = `<div class="kindnote">Recorded on ${esc(n.owner || 'the other')}'s phone${n.media && !n.media.uploaded ? ' · still uploading' : ''}</div>` + resultHtml(n) + body;
   const tags = n.tags && n.tags.length ? `<div class="tagline">${n.tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : '';
   return `<article class="note-card remote${ak ? ' k-' + ak : ''}" data-id="${esc(n.uid)}">
@@ -723,6 +726,18 @@ document.addEventListener('click', async e => {
 });
 /* Photos taken while a meeting was being recorded belong to that moment: find the recording whose time window holds
    the photo (either phone), the second into it, and what was being said then (from Claude's translation). */
+/* What Claude read from a photo (results/photos/<uid>.json): slide text, figures, diagram description, translation. */
+const photoRead = p => results[`results/photos/${p.uid || uidOf(p)}.json`];
+const PKIND = {slide: 'Slide', diagram: 'Diagram', spec_sheet: 'Spec sheet', nameplate: 'Nameplate', product: 'Product', plant: 'Plant', people: 'People', other: 'Photo'};
+function photoReadHtml(p){
+  const x = photoRead(p); if (!x || x.relevant === false) return '';
+  const figs = (x.figures || []).filter(Boolean);
+  return `<div class="pread"><div class="prh"><span class="aibadge">✦ Claude read this ${esc((PKIND[x.kind] || 'photo').toLowerCase())}</span>${x.legibility && x.legibility !== 'clear' ? `<span class="chip warn">${esc(x.legibility)}</span>` : ''}</div>
+    ${x.title ? `<b class="prt">${esc(x.title)}</b>` : ''}${x.summary ? `<p>${esc(x.summary)}</p>` : ''}
+    ${figs.length ? `<ul class="rl">${figs.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}
+    ${x.diagram ? `<div class="rtag">Diagram</div><p>${esc(x.diagram)}</p>` : ''}
+    ${x.text_src ? `<details><summary>Text on the ${esc((PKIND[x.kind] || 'photo').toLowerCase())}${x.text_en ? ' + translation' : ''}</summary><pre class="ptxt">${esc(x.text_src)}</pre>${x.text_en ? `<pre class="ptxt en">${esc(x.text_en)}</pre>` : ''}</details>` : ''}</div>`;
+}
 function photoMoment(p){
   if (!p || (p.type !== 'photo' && p.type !== 'video')) return null;
   const recs = (noteCache[p.meetingId] || []).filter(n => n.type === 'audio' && akind(n) === 'meeting' && n.duration);
@@ -753,7 +768,7 @@ function photoStripHtml(rec){
   return `<div class="rtag">Photos during this recording</div><div class="pstrip">${ps.map(p => { const m = photoMoment(p);
     const img = p.blob ? (() => { const u = URL.createObjectURL(p.blob); urls.push(u); return `<img src="${u}" alt="" loading="lazy">`; })()
       : p.media ? `<button class="btn ghost small" data-remote-photo="${esc(p.media.path)}" data-parts="${p.media.parts || 1}">Show photo</button>` : '';
-    return `<figure>${img}<figcaption><button class="segt" data-seekuid="${esc(m.uid)}" data-t="${m.t}">${fmtAt(m.t, rec.duration)}</button>${m.quote ? ` ${esc(m.quote.slice(0, 120))}${m.quote.length > 120 ? '…' : ''}` : ''}</figcaption></figure>`; }).join('')}</div>`;
+    return `<figure>${img}<figcaption><button class="segt" data-seekuid="${esc(m.uid)}" data-t="${m.t}">${fmtAt(m.t, rec.duration)}</button>${(x => x && x.relevant !== false && x.title ? ` <b>${esc(x.title)}</b>` : '')(photoRead(p))}${m.quote ? ` ${esc(m.quote.slice(0, 120))}${m.quote.length > 120 ? '…' : ''}` : ''}</figcaption></figure>`; }).join('')}</div>`;
 }
 function noteHtml(n){
   if (n.remote) return remoteNoteHtml(n);
@@ -763,7 +778,7 @@ function noteHtml(n){
   const long = t => t && t.length > 420 ? ' class="clamp"' : '';
   const more = t => t && t.length > 420 ? `<button class="morebtn" data-more>Show more</button>` : '';
   if (n.type === 'text') body = n.text ? `<p${long(n.text)}>${esc(n.text)}</p>${more(n.text)}` : `<p style="color:var(--ink2)"><i>Tag only, no text</i></p>`;
-  if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">` + momentHtml(n); }
+  if (n.type === 'photo'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<img src="${u}" alt="">` + momentHtml(n) + photoReadHtml(n); }
   if (n.type === 'video'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<video src="${u}" controls playsinline preload="metadata"></video>` + momentHtml(n); }
   if (n.type === 'audio'){ const u = URL.createObjectURL(n.blob); urls.push(u); body = `<audio src="${u}" preload="metadata" data-dur="${n.duration || 0}"></audio>
     <div class="player"><button class="pp" data-play aria-label="Play">${ICON.play}</button><input type="range" min="0" max="${Math.max(1, Math.round(n.duration || 0))}" step="1" value="0" aria-label="Position"><span class="tm">${fmtAt(0, n.duration || 0)} / ${fmtAt(n.duration || 0, n.duration || 0)}</span></div>`
@@ -1234,6 +1249,10 @@ ol.q li::before{content:counter(q);position:absolute;left:0;top:8px;width:22px;h
 .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .gallery figure{margin:0;break-inside:avoid}.gallery img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;background:#F3ECE6}
 .gallery figcaption{font-size:11px;color:var(--mute);margin-top:4px}
+.slide{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 10px;break-inside:avoid}
+.slide .sh{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline;margin-bottom:6px}.slide .sh .m{font-size:11px;color:var(--mute)}
+.slide .kind{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);background:var(--tint);border-radius:999px;padding:2px 8px}
+.slide ul{margin:0;padding-left:18px}.slide li{margin:2px 0}.slide p{margin:6px 0 0}
 .matrix{overflow-x:auto}.matrix table{min-width:640px}.matrix td{font-size:12.5px}.matrix td.gap{color:#B9A496}.matrix td b{font-size:13px}
 .visit{border:1px solid var(--line);border-radius:16px;padding:16px 18px;margin:0 0 14px;break-inside:avoid}
 .visit .top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
@@ -1304,11 +1323,19 @@ function rTimeline(V, photoSrc){
   ].sort((a,b) => a.at - b.at);
   return items.length ? `<section><h2>On-site record <span class="n">${items.length}</span></h2><ol class="tl">${items.map(x => x.html).join('')}</ol></section>` : '';
 }
+function rSlides(V){
+  const read = V.photos.map(p => ({p, x: photoRead(p)})).filter(o => o.x && o.x.relevant !== false && ((o.x.figures || []).length || o.x.diagram));
+  if (!read.length) return '';
+  return `<section><h2>From the slides and diagrams <span class="n">${read.length}</span></h2><p class="empty-note" style="font-style:normal">Read by Claude from photos taken during the visit; [?] marks characters that could not be read with certainty.</p>
+    ${read.map(({p, x}) => { const m = photoMoment(p);
+      return `<div class="slide"><div class="sh"><span class="kind">${esc(PKIND[x.kind] || 'Photo')}</span><b>${esc(x.title || '')}</b><span class="m">${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}${m ? ` · ${fmtAt(m.t, m.rec.duration)} in the recording` : ''}</span></div>
+        ${(x.figures || []).length ? `<ul>${x.figures.map(f => `<li>${esc(f)}</li>`).join('')}</ul>` : ''}${x.diagram ? `<p><b>Diagram:</b> ${esc(x.diagram)}</p>` : ''}</div>`; }).join('')}</section>`;
+}
 function rGallery(V, photoSrc){
   if (!photoSrc) return '';
   const shown = V.photos.filter(p => photoSrc[p.uid || p.id]);
   if (!shown.length) return '';
-  return `<section><h2>Photos <span class="n">${shown.length}${shown.length < V.photos.length ? ` of ${V.photos.length}` : ''}</span></h2><div class="gallery">${shown.map(p => `<figure><img src="${photoSrc[p.uid || p.id]}" alt=""><figcaption>${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}${p.text ? ` · ${esc(p.text)}` : ''}${(m => m ? `<br><b>At ${fmtAt(m.t, m.rec.duration)} in the meeting recording</b>${m.quote ? `: “${esc(m.quote.slice(0, 160))}${m.quote.length > 160 ? '…' : ''}”` : ''}` : '')(photoMoment(p))}</figcaption></figure>`).join('')}</div></section>`;
+  return `<section><h2>Photos <span class="n">${shown.length}${shown.length < V.photos.length ? ` of ${V.photos.length}` : ''}</span></h2><div class="gallery">${shown.map(p => `<figure><img src="${photoSrc[p.uid || p.id]}" alt=""><figcaption>${fmtTime(p.createdAt)} · ${esc(rNameOf(p))}${p.text ? ` · ${esc(p.text)}` : ''}${(x => x && x.relevant !== false && x.title ? `<br><b>${esc(PKIND[x.kind] || 'Photo')}: ${esc(x.title)}</b>` : '')(photoRead(p))}${(m => m ? `<br><b>At ${fmtAt(m.t, m.rec.duration)} in the meeting recording</b>${m.quote ? `: “${esc(m.quote.slice(0, 160))}${m.quote.length > 160 ? '…' : ''}”` : ''}` : '')(photoMoment(p))}</figcaption></figure>`).join('')}</div></section>`;
 }
 function visitReportHtml(id, photoSrc){
   const V = visitModel(id), m = V.m, b = V.brief;
@@ -1322,7 +1349,7 @@ function visitReportHtml(id, photoSrc){
   h += `<section><h2>Key commercial facts</h2>${rFacts(V.facts)}</section>`;
   h += `<section><h2>Actions <span class="n">${V.follow.length}</span></h2>${rActions(V.follow)}</section>`;
   if (V.questions.length) h += `<section><h2>Open questions <span class="n">${V.questions.length}</span></h2><ol class="q">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
-  h += rViews(V) + rGallery(V, photoSrc) + rTimeline(V, photoSrc);
+  h += rSlides(V) + rViews(V) + rGallery(V, photoSrc) + rTimeline(V, photoSrc);
   return rDoc(`Visit ${pad2(id)} · ${m.name}`, h + `</main>` + rFoot(`Visit report ${pad2(id)}`));
 }
 function scopeReportHtml(scope){
@@ -1927,7 +1954,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.7';
+const APP_VERSION = '3.8';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
