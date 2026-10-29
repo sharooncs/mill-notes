@@ -24,7 +24,7 @@ async def main():
         st = await pg.evaluate("({on: !!rec, newRec: rec && rec.recId !== _r1.recId, why: _r1.stallWhy, toast: (document.querySelector('#toast')||{}).textContent})")
         print('after stall:', st); ok &= st['on'] and st['newRec'] and st['why'] == 'no-data'
         n2 = await pg.evaluate(notes); print('saved:', n2); ok &= len(n2) == 2 and n2[1]['d'] < 16
-        await pg.screenshot(path='t_watchdog.png')
+        await pg.screenshot(path='/tmp/t_watchdog.png')
         await pg.evaluate("stopRecording()"); await pg.wait_for_timeout(5000)
         print('page errors:', errs); ok &= not errs
         await b.close()

@@ -17,10 +17,10 @@ async def main():
         await pg.wait_for_timeout(800)
         bar = await pg.text_content('.clarbar') if await pg.query_selector('.clarbar') else None
         print('home banner:', bar); ok &= bool(bar) and '2 questions' in bar
-        await pg.screenshot(path='t_clar_home.png')
+        await pg.screenshot(path='/tmp/t_clar_home.png')
         await pg.click('.clarbar'); await pg.wait_for_timeout(800)
         n = await pg.eval_on_selector_all('.cq', 'e => e.length'); print('questions on visit page:', n); ok &= n == 2
-        await pg.screenshot(path='t_clar_visit.png', full_page=False)
+        await pg.screenshot(path='/tmp/t_clar_visit.png', full_page=False)
         await pg.click('.cq[data-qid="9alw04cx-55-q1"] [data-cans="18 t"]'); await pg.wait_for_timeout(600)
         await pg.fill('.cq[data-qid="9alw04cx-55-q2"] .other input', 'Per furnace, quoted by Troy'); await pg.click('.cq[data-qid="9alw04cx-55-q2"] [data-cother]'); await pg.wait_for_timeout(600)
         snap = await pg.evaluate("(async () => stateSnapshot(await getAll('notes')).answers)()")
@@ -29,7 +29,7 @@ async def main():
         await pg.reload(); await pg.wait_for_timeout(1500)
         kept = await pg.evaluate("Object.keys(answers).length"); print('answers kept after reload:', kept); ok &= kept == 2
         await pg.evaluate("location.hash = '#m2'"); await pg.wait_for_timeout(800)
-        await pg.screenshot(path='t_clar_answered.png')
+        await pg.screenshot(path='/tmp/t_clar_answered.png')
         print('page errors:', errs); ok &= not errs; await b.close()
     print('PASS' if ok else 'FAIL')
 asyncio.run(main()); srv.terminate()

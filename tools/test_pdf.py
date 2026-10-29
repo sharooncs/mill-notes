@@ -15,6 +15,6 @@ async def main():
             await pg.wait_for_timeout(500)
         print('button:', t)
         data = await pg.evaluate("(async () => { const b = await rpt.pdf.arrayBuffer(); let s=''; new Uint8Array(b).forEach(x => s += String.fromCharCode(x)); return [rpt.pdf.name, btoa(s)]; })()")
-        open('t_report.pdf', 'wb').write(base64.b64decode(data[1])); print('file:', data[0])
+        open('/tmp/t_report.pdf', 'wb').write(base64.b64decode(data[1])); print('file:', data[0])
         print('page errors:', errs); await b.close()
 asyncio.run(main()); srv.terminate()
