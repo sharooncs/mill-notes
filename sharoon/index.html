@@ -452,8 +452,8 @@ const MEETINGS = [
  {id:5, day:'03', dow:'Wed', date:'2026-10-28', time:'09:15–11:30', name:'Curve Roll Grinder', place:'Changzhou', detail:'Changzhou · Spec S09 & S10'},
  {id:6, day:'03', dow:'Wed', date:'2026-10-28', time:'13:30–15:30', name:'Longray Furnaces', place:'Suzhou', detail:'Suzhou', contact:'Zhang', phone:'+86 189 5110 8961'},
  {id:7, day:'03', dow:'Wed', date:'2026-10-28', time:'18:30–20:00', name:'Shanghai Fronject', place:'Shanghai', detail:'At Primus Hotel · OMR + ROR S13'},
- {id:8, day:'04', dow:'Thu', date:'2026-10-29', time:'13:35–14:30', name:'Chinalco Foil Plant', place:'Luoyang', cancelled:true, detail:'Cancelled'},
- {id:9, day:'04', dow:'Thu', date:'2026-10-29', time:'14:45–15:35', name:'CNPT Luoyang HQ', place:'Luoyang', detail:'Leave 15:35 sharp for the station', contact:'Wang', phone:'+86 139 3880 4883'},
+ {id:8, day:'04', dow:'Thu', date:'2026-10-29', time:'13:35–14:30', name:'Chinalco Foil Plant', place:'Luoyang', cancelled:true, detail:'Cancelled by host'},
+ {id:9, day:'04', dow:'Thu', date:'2026-10-29', time:'14:45–15:35', name:'CNPT Luoyang HQ', place:'Luoyang', detail:'Leave 15:35 sharp for the station', contact:'Wong', phone:'+86 139 3880 4883'},
  {id:10,day:'05', dow:'Fri', date:'2026-10-30', time:'08:45–11:00', name:'Zhuoshen Mill Factory', place:'Zhuozhou', detail:'Zhuozhou', contact:'Tiger', phone:'+86 134 6312 6059'},
  {id:11,day:'05', dow:'Fri', date:'2026-10-30', time:'11:15–12:45', name:'NCA Battery Foil Plant', place:'Zhuozhou', detail:'Robotic spool & roll handling'},
  {id:12,day:'05', dow:'Fri', date:'2026-10-30', time:'14:00–16:30', name:'NCHM Office & Factory', place:'Zhuozhou', detail:'Zhuozhou', contact:'Vivien', phone:'+86 136 6130 3116'},
@@ -1438,7 +1438,7 @@ function rCoverage(ms){
   for (const m of ms){ const V = visitModel(m.id); if (m.cancelled) cancelled.push(m); else if (!V.empty) done.push(m); else if (V.started) missed.push(m); else ahead.push(m); }
   const names = a => a.map(m => m.name).join(', ');
   if (!done.length && !missed.length && ahead.length === ms.length - cancelled.length) return `Planned: ${ahead.length} visit${ahead.length > 1 ? 's' : ''}. The report follows after the visits.`;
-  return `${ms.length} visit${ms.length > 1 ? 's' : ''} planned: ${done.length} done${cancelled.length ? `, ${cancelled.length} cancelled (${esc(names(cancelled))})` : ''}${missed.length ? `, ${missed.length} with nothing recorded (${esc(names(missed))})` : ''}${ahead.length ? `, ${ahead.length} still to come on ${esc([...new Set(ahead.map(m => shortDate(m)))].join(', '))}` : ''}`;
+  return `${ms.length} visit${ms.length > 1 ? 's' : ''} planned: ${done.length} done${cancelled.length ? `, ${cancelled.length} cancelled (${esc(cancelled.map(m => m.name + (/host/i.test(m.detail || '') ? ' by host' : '')).join(', '))})` : ''}${missed.length ? `, ${missed.length} with nothing recorded (${esc(names(missed))})` : ''}${ahead.length ? `, ${ahead.length} still to come on ${esc([...new Set(ahead.map(m => shortDate(m)))].join(', '))}` : ''}`;
 }
 function rViews(V){
   const views = [];
@@ -1541,7 +1541,7 @@ function visitReportHtml(id, photoSrc){
   const V = visitModel(id), m = V.m, c = visitCard(id);
   let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${(c || {}).kind === 'reference' ? 'Reference plant visit' : 'Supplier visit'}</span><span class="doc">${esc(m.dow)} ${Number(m.date.slice(8))} Oct</span></div>
     <h1>${esc(m.name)}</h1><div class="sub">${esc([m.place, m.contact ? `Contact: ${m.contact}` : ''].filter(Boolean).join(' · '))}${m.cancelled ? ' · Cancelled' : ''}</div></header><main>`;
-  if (V.empty){ h += `<p class="src">${m.cancelled ? 'Cancelled; nothing captured.' : V.started ? 'Nothing was captured at this visit.' : 'Not visited yet.'}</p>`; return rDoc2(`${m.name} visit report`, h + `</main>` + rFoot(`Visit report · ${m.name}`)); }
+  if (V.empty){ h += `<p class="src">${m.cancelled ? `${/host/i.test(m.detail || '') ? 'Cancelled by host' : 'Cancelled'}; nothing captured.` : V.started ? 'Nothing was captured at this visit.' : 'Not visited yet.'}</p>`; return rDoc2(`${m.name} visit report`, h + `</main>` + rFoot(`Visit report · ${m.name}`)); }
   h += `<section>${rSheet(id, photoSrc, {photos: 2})}</section>`;
   const rows = []; for (const [k, label] of FACT_KEYS) for (const x of V.facts[k]) if (!rHousekeeping(x.text) && !rNoise(x.text)) rows.push([label.replace('Key figures', 'Figure').replace('Prices and terms', 'Price/terms').replace('Lead times', 'Lead time'), x.text]);
   if (rows.length) h += `<section><h2>Facts <span class="n">${rows.length}</span></h2>${rTable(['Type', 'Fact'], rows.map(r => [`<b>${esc(r[0])}</b>`, esc(r[1])]))}</section>`;
@@ -2235,7 +2235,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.13';
+const APP_VERSION = '3.14';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
