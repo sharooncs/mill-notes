@@ -579,8 +579,23 @@ function scheduleMeeting(){
 
 async function loadState(){
   const rows = await getAll('meetings'); meetingState = {}; rows.forEach(r => meetingState[r.id] = r);
-  const notes = await getAll('notes'); noteCache = {}; notes.forEach(n => (noteCache[n.meetingId] ||= []).push(n));
-  try { await loadSynced(); remoteNotes.forEach(n => (noteCache[n.meetingId] ||= []).push(n)); } catch(e){}
+  const notes = await getAll('notes'); noteCache = {};
+  try { await loadSynced(); await applyRefile(notes, rows); notes.forEach(n => (noteCache[n.meetingId] ||= []).push(n)); remoteNotes.forEach(n => (noteCache[n.meetingId] ||= []).push(n)); } catch(e){ notes.forEach(n => (noteCache[n.meetingId] ||= []).push(n)); }
+  for (const k in noteCache) noteCache[k] = [...new Map(noteCache[k].map(n => [n.id + (n.remote ? 'r' : ''), n])).values()];
+}
+/* Corrections filed from the office (results/refile.json): items or check-ins that were put under the wrong visit.
+   Each move names the visit it is coming from, so applying it twice does nothing. This phone saves its own items, so the fix syncs back and sticks. */
+async function applyRefile(notes, rows){
+  const R = results['results/refile.json']; if (!R) return;
+  const mv = new Map((R.notes || []).map(x => [x.uid, x]));
+  for (const n of notes){ const x = mv.get(uidOf(n)); if (x && n.meetingId === x.from){ n.meetingId = x.to; await put('notes', n); scheduleSync(); } }
+  for (const n of remoteNotes){ const x = mv.get(uidOf(n)); if (x && n.meetingId === x.from) n.meetingId = x.to; }
+  const mine = (R.checkins || []).filter(c => c.device === deviceId), changes = [];
+  for (const c of mine){ const r = rows.find(r => r.id === c.from && r.checkedIn && r.at === c.at); if (r) changes.push({c, r}); }
+  if (changes.length){ const moved = new Set(changes.map(x => x.c.from));
+    for (const {c, r} of changes){ const nr = {...r, id: c.to, at: c.newAt || r.at}; meetingState[c.to] = nr; await put('meetings', nr); if (!changes.some(x => x.c.to === c.from)) { delete meetingState[c.from]; await del('meetings', c.from); } }
+    scheduleSync(); }
+  for (const c of (R.checkins || []).filter(c => c.device !== deviceId)) for (const m of _remoteMeetings) if (m.id === c.from && m.checkedIn && m.at === c.at && (m.device === c.device || !m.device)) { m.id = c.to; if (c.newAt) m.at = c.newAt; }
 }
 
 /* ---------- router ---------- */
@@ -1939,7 +1954,7 @@ async function loadSynced(){
   remoteNotes = []; _remoteMeetings = []; remoteDocs = [];
   (await getAll('remote')).forEach(r => { if (r.device === deviceId) return; remoteDocs.push(r);
     remoteNotes.push(...(r.notes || []).map(n => ({...n, remote: true, owner: r.owner})));
-    _remoteMeetings.push(...(r.meetings || []).map(m => ({...m, owner: r.owner}))); });
+    _remoteMeetings.push(...(r.meetings || []).map(m => ({...m, owner: r.owner, device: r.device}))); });
 }
 const resultFor = n => results[`results/notes/${uidOf(n)}.json`];
 let syncTimer = null;
@@ -2154,7 +2169,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.11';
+const APP_VERSION = '3.12';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
