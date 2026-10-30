@@ -24,7 +24,7 @@ async def main():
         await pg.screenshot(path='/tmp/claude-0/t_photoread.png', full_page=True)
         await pg.evaluate("openReport('visit', 1)"); await pg.wait_for_timeout(2500)
         html = await pg.evaluate("rpt.html")
-        rep = 'From the slides and diagrams' in html and 'Max rolling speed 1500 m/min' in html
+        rep = 'From slides and drawings' in html and 'Max rolling speed 1500 m/min' in html
         print('report section:', rep); ok &= rep
         print('page errors:', errs); ok &= not errs; await b.close()
     print('PASS' if ok else 'FAIL')

@@ -1154,6 +1154,8 @@ function renderReport(scope){
   const f = $('#view .repframe');
   f.addEventListener('load', () => { const fit = () => { try { f.style.height = (f.contentDocument.documentElement.scrollHeight + 2) + 'px'; } catch(e){} }; fit(); setTimeout(fit, 300); });
   f.srcdoc = rep.html;
+  const list = scopePhotoNotes(scope); if (!list.length) return;
+  photoDataUrls(null, list, 700).then(src => { if (location.hash !== (scope === 'trip' ? '#trip' : '#' + scope) || !document.contains(f)) return; f.srcdoc = scopeReportHtml(scope, src).html; });
 }
 function shareReport(scope){ return openReport('scope', scope); }
 async function copyReport(scope){ const t = reportText(scopeReportHtml(scope).html); try { await navigator.clipboard.writeText(t); toast('Report copied'); } catch(e){ await shareReport(scope); } }
@@ -1471,90 +1473,149 @@ function rGallery(V, photoSrc){
   if (!shown.length) return '';
   return `<section><h2>Photos <span class="n">${shown.length}${shown.length < V.photos.length ? ` of ${V.photos.length}` : ''}</span></h2><div class="gallery">${shown.map(p => `<figure><img src="${photoSrc[p.uid || p.id]}" alt=""><figcaption>${(x => x && x.relevant !== false && x.title ? esc(x.title) : esc(p.text || ''))(photoRead(p))}</figcaption></figure>`).join('')}</div></section>`;
 }
-function visitReportHtml(id, photoSrc){
-  const V = visitModel(id), m = V.m, b = V.brief;
-  const counts = [V.recs.filter(r => r.kind !== 'memo').length && plural(V.recs.filter(r => r.kind !== 'memo').length, 'meeting recording'), V.recs.filter(r => r.kind === 'memo').length && plural(V.recs.filter(r => r.kind === 'memo').length, 'voice note'), V.photos.length && plural(V.photos.length, 'photo'), V.videos.length && plural(V.videos.length, 'video'), V.typed.length && plural(V.typed.length, 'typed note')].filter(Boolean).join(' · ') || 'Nothing captured yet';
-  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${(visitCard(id) || {}).kind === 'reference' ? 'Reference plant visit' : 'Supplier visit'}</span><span class="doc">${esc(m.dow)} ${Number(m.date.slice(8))} Oct</span></div>
-    <h1>${esc(m.name)}</h1><div class="sub">${esc(m.place || '')}${m.cancelled ? ' · Cancelled' : ''}</div>
-    <div class="meta"><div><span>Date</span>${esc(m.dow)} ${Number(m.date.slice(8))} Oct 2026</div>${m.contact ? `<div><span>Contact</span>${esc(m.contact)}</div>` : ''}</div></header><main>`;
-  h += visitCard(id) ? `<section class="brief1"><h2>At a glance</h2>${rCard(id)}</section>` : '';
-  h += visitCard(id) ? '' : `<section><h2>Bottom line</h2>${b && b.headline ? `<div class="bluf"><span class="ai">✦ Claude</span><div class="head">${esc(rTxt(b.headline))}</div>${b.offer ? `<p>${esc(rTxt(b.offer))}</p>` : ''}${(b.bullets || []).length ? `<ul>${b.bullets.map(x => `<li>${esc(rTxt(x))}</li>`).join('')}</ul>` : ''}</div>`
-    : V.sums.length ? `<div class="bluf"><div class="head">${esc(V.sums[0].text.split('\n')[0])}</div><p>${esc(V.sums[0].by)}'s summary</p></div>` : `<p class="empty-note">${m.cancelled ? 'Cancelled; nothing captured.' : V.started ? 'Nothing was captured at this visit.' : 'Not visited yet.'}</p>`}</section>`;
-  const isRef = (visitCard(id) || {}).kind === 'reference', TOP = 8;
-  const top = {}, rest = []; for (const [k] of FACT_KEYS){ const clean = V.facts[k].filter(x => !rHousekeeping(x.text)); top[k] = k === 'specs' ? clean.slice(0, TOP) : clean; if (k === 'specs') rest.push(...clean.slice(TOP).filter(x => !rNoise(x.text)).slice(0, 8)); }
-  if (!isRef && !V.empty) h += `<section><h2>Facts we have</h2>${rFacts(top)}</section>`;
-  if (!V.empty) h += `<section><h2>Follow-ups <span class="n">${V.follow.length}</span></h2>${rActions(V.follow)}</section>`;
-  if (V.questions.length) h += `<section><h2>Still to confirm <span class="n">${V.questions.length}</span></h2><ol class="q">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
-  if (!V.empty) h += `<div class="appx"><h2 class="ah">Appendix: source material</h2><p class="empty-note" style="font-style:normal">Figures read from the supplier's slides and drawings, and the photos.</p></div>`;
-  if (rest.length) h += `<section><h2>All other figures noted <span class="n">${rest.length}</span></h2><ul>${rest.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul></section>`;
-  if (false) h += `<section><h2>Notes to confirm <span class="n">${V.toConfirm.length}</span></h2><p class="empty-note" style="font-style:normal">Points where the recordings were unclear or disagreed. Check them with the supplier.</p><ul>${V.toConfirm.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
-  h += rSlides(V) + rGallery(V, photoSrc);
-  return rDoc(`${m.name} visit report`, h + `</main>` + rFoot(`Visit report · ${m.name}`));
+/* ---------- Reports, v2: short and factual. One "sheet" per supplier: who, offer, + / −, price, lead time, what we need, and its best photos. ---------- */
+const PH_SCORE = {product: 3, plant: 3, diagram: 2, nameplate: 0.6, spec_sheet: 0.4, slide: 0.3, people: 0, other: 0.2};
+function keyPhotos(id, n = 3){
+  const ps = visitModel(id).photos.map((p, i) => ({p, x: photoRead(p), i})).filter(o => !o.x || o.x.relevant !== false);
+  const seen = new Set();
+  return ps.map(o => ({...o, s: (o.x ? (PH_SCORE[o.x.kind] ?? 0.5) - (/screen|presentation|slide|video|animation/i.test(o.x.title || '') ? 1.5 : 0) - (/gate|entrance|office building|car arriving|\bsign\b|banner|safety-board|exterior/i.test(o.x.title || '') ? 1.2 : 0) : 0.4)}))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .filter(o => { const t = ((o.x && o.x.title) || '').toLowerCase().replace(/\(.*?\)|other angle|closer view|close-up|wide view/g, '').slice(0, 28); if (t && seen.has(t)) return false; seen.add(t); return true; })
+    .slice(0, n).sort((a, b) => a.p.createdAt - b.p.createdAt);
 }
-function scopeReportHtml(scope){
+const phCap = o => { let t = rClean((o.x && o.x.title) || o.p.text || '').replace(/[\u3000-\u9fff\uff00-\uffef]+[^A-Za-z]*/g, ' ').replace(/\S*\.(dwg|pdf|jpg)\b/gi, '').replace(/^[\s—–\-/:;,]+|[\s—–\-/:;,(]+$/g, '').replace(/\s{2,}/g, ' ');
+  if (t.length < 6 && o.x && o.x.summary) t = rClean(o.x.summary).split(/[.;]/)[0];
+  if (t.length > 64){ t = t.split(/\s[—–]\s|:\s|;\s|,\s/)[0]; } if (t.length > 64) t = t.slice(0, 64).replace(/\s\S*$/, '');
+  t = t.replace(/[\s,;:('"‘’“”]+$/, '').replace(/['"‘’“”]\s*$/, ''); return t.charAt(0).toUpperCase() + t.slice(1); };
+const phFig = (o, src) => `<figure><img src="${src[o.p.uid || o.p.id]}" alt=""><figcaption>${esc(phCap(o))}</figcaption></figure>`;
+function rSheet(id, src, opts = {}){
+  const m = MEETINGS.find(x => x.id === id), c = visitCard(id), V = visitModel(id), b = V.brief || {};
+  const ph = src ? keyPhotos(id, opts.photos || 2).filter(o => src[o.p.uid || o.p.id]) : [];
+  const meta = [shortDate(m), m.place, c && c.category && !/reference/i.test(c.category) ? c.category : ''].filter(Boolean).join(' · ');
+  const li = (a, cls) => (a || []).filter(Boolean).map(x => `<li class="${cls}">${esc(rTxt(x))}</li>`).join('');
+  let body = '';
+  if (!c){ body = `${b.headline ? `<p>${esc(rTxt(b.headline))}</p>` : '<p class="src">Not yet summarised.</p>'}${b.our_take ? `<p class="take">${esc(rTxt(b.our_take))}</p>` : ''}`; }
+  else if (c.kind === 'reference' && opts.brief){ body = c.who ? `<p class="whoami">${esc(c.who)}</p>` : ''; }
+  else if (c.kind === 'reference'){ body = `${c.who ? `<p class="whoami">${esc(c.who)}</p>` : ''}${c.offered ? `<p>${esc(c.offered)}</p>` : ''}${c.our_take ? `<p class="take"><b>Takeaway:</b> ${esc(c.our_take)}</p>` : ''}`; }
+  else {
+    const unpriced = !c.price || /^not quoted/i.test(c.price);
+    const pm = li(c.strengths, 'p') + li((c.concerns || []).filter(x => !(unpriced && /^no (\w+ )?(mill |annealing-furnace |)?(offer|price|prices|quote)\b.*(yet)?$/i.test(x) && x.length < 50)), 'm');
+    body = `${c.who ? `<p class="whoami">${esc(c.who)}</p>` : ''}${c.offered ? `<p>${esc(c.offered)}</p>` : ''}${pm ? `<ul class="pm">${pm}</ul>` : ''}
+      <div class="kf"><div><span>Price</span>${esc(c.price || 'Not quoted')}</div><div><span>Lead time</span>${esc(c.lead_time || 'Not given')}</div>${(c.need || []).length ? `<div class="w"><span>We need</span>${esc(c.need.map(rTxt).join('; '))}</div>` : ''}</div>
+      ${c.our_take && !/^no (team )?(view|summary)/i.test(c.our_take) ? `<p class="take"><b>Team view:</b> ${esc(c.our_take)}</p>` : ''}`;
+  }
+  const pend = V.recs.filter(r => !r.ai).length; if (pend) body += `<p class="src">${pend} recording${pend > 1 ? 's' : ''} still being transcribed; this summary may change.</p>`;
+  return `<div class="sheet${ph.length ? '' : ' nophoto'}"><div class="st"><div class="sh"><h3>${esc(m.name)}</h3><span class="when">${esc(meta)}</span></div>${body}</div>${ph.length ? `<div class="ph">${ph.map(o => phFig(o, src)).join('')}</div>` : ''}</div>`;
+}
+const RPT2_CSS = `
+main{padding:18px 26px 4px}section{margin:0 0 18px}h2{margin:0 0 8px}
+.cover{padding:18px 26px 16px}.cover h1{font-size:26px;margin:10px 0 2px}.cover .sub{font-size:13px;margin-bottom:8px}.cov{font-size:12px;opacity:.85}
+body{font-size:12.5px;line-height:1.45}td{font-size:12px;padding:6px 8px 6px 0}th{padding:0 8px 6px 0;font-size:9px}
+p{margin:0 0 5px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}.tiles div{border:1px solid var(--line);border-radius:10px;padding:7px 10px}.tiles b{display:block;font-size:20px;line-height:1.1;font-weight:800;color:var(--ink)}.tiles span{font-size:10.5px;color:var(--mute)}
+.lead{font-size:13.5px;line-height:1.45;margin:0 0 8px}
+.cost{border-left:4px solid var(--honey);background:var(--honeybg);border-radius:3px 10px 10px 3px;padding:7px 11px;margin:0 0 4px;font-size:12.5px}.cost b{font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#8A5A00;margin-right:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}.two h3,.hh{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 4px}
+ul.tight{margin:0;padding-left:16px}ul.tight li{margin:0 0 3px}
+.sheet{display:grid;grid-template-columns:1fr 170px;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 10px;break-inside:avoid}
+.sheet.nophoto{grid-template-columns:1fr}
+.sheet .sh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 4px}.sheet h3{font-size:14.5px}.sheet .when{font-size:10.5px;color:var(--mute);white-space:nowrap}
+.whoami{color:var(--mute);font-size:11.5px}
+ul.pm{list-style:none;margin:4px 0 6px;padding:0}ul.pm li{position:relative;padding-left:16px;margin:0 0 2px;font-size:12px}ul.pm li::before{position:absolute;left:0;top:0;font-weight:800}ul.pm li.p::before{content:"+";color:var(--mint)}ul.pm li.m::before{content:"−";color:var(--accent)}
+.kf{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;border-top:1px solid var(--line);padding-top:5px;font-size:12px}.kf .w{grid-column:1/-1}.kf span{display:block;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.take{font-size:12px;color:var(--ink2);margin:5px 0 0}
+.ph{display:flex;flex-direction:column;gap:6px}.ph figure{margin:0}.ph img{width:100%;height:92px;object-fit:cover;border-radius:7px;display:block}.ph figcaption{font-size:9.5px;line-height:1.25;color:var(--mute);margin-top:2px}
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.pgrid figure{margin:0;break-inside:avoid}.pgrid img{width:100%;height:150px;object-fit:cover;border-radius:7px;display:block}.pgrid figcaption{font-size:9.5px;line-height:1.25;color:var(--mute);margin-top:2px}
+.gl3{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 14px;font-size:10.5px;line-height:1.3}.gl3 b{display:block}
+.sm td{font-size:11px;padding:4px 8px 4px 0}
+.slides li{font-size:11.5px;margin:0 0 4px}
+@media (max-width:560px){.sheet{grid-template-columns:1fr}.ph{flex-direction:row;overflow-x:auto}.ph figure{flex:0 0 46%}.ph img{height:110px}.two,.tiles,.gl3,.kf{grid-template-columns:1fr 1fr}.pgrid{grid-template-columns:1fr 1fr}main{padding:14px 14px 4px}.cover{padding:16px 16px 14px}}
+`;
+const rDoc2 = (title, body) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${RPT_CSS}${RPT2_CSS}</style></head><body><div class="page">${body}</div></body></html>`;
+function rGloss3(text, gl){
+  const used = (gl || []).filter(g => new RegExp(`\\b${g.term.split(/[\s(/,]/)[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i').test(text));
+  return used.length ? `<section><h2>Terms used</h2><div class="gl3">${used.map(g => `<div><b>${esc(g.term)}</b>${esc(g.plain)}</div>`).join('')}</div></section>` : '';
+}
+const OURS = /^(Sharoon|Naveed|Both|Team|Us)$/i;
+function visitReportHtml(id, photoSrc){
+  const V = visitModel(id), m = V.m, c = visitCard(id);
+  let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${(c || {}).kind === 'reference' ? 'Reference plant visit' : 'Supplier visit'}</span><span class="doc">${esc(m.dow)} ${Number(m.date.slice(8))} Oct</span></div>
+    <h1>${esc(m.name)}</h1><div class="sub">${esc([m.place, m.contact ? `Contact: ${m.contact}` : ''].filter(Boolean).join(' · '))}${m.cancelled ? ' · Cancelled' : ''}</div></header><main>`;
+  if (V.empty){ h += `<p class="src">${m.cancelled ? 'Cancelled; nothing captured.' : V.started ? 'Nothing was captured at this visit.' : 'Not visited yet.'}</p>`; return rDoc2(`${m.name} visit report`, h + `</main>` + rFoot(`Visit report · ${m.name}`)); }
+  h += `<section>${rSheet(id, photoSrc, {photos: 2})}</section>`;
+  const rows = []; for (const [k, label] of FACT_KEYS) for (const x of V.facts[k]) if (!rHousekeeping(x.text) && !rNoise(x.text)) rows.push([label.replace('Key figures', 'Figure').replace('Prices and terms', 'Price/terms').replace('Lead times', 'Lead time'), x.text]);
+  if (rows.length) h += `<section><h2>Facts <span class="n">${rows.length}</span></h2>${rTable(['Type', 'Fact'], rows.map(r => [`<b>${esc(r[0])}</b>`, esc(r[1])]))}</section>`;
+  if (V.follow.length) h += `<section><h2>Follow-ups</h2>${rTable(['Owner', 'Action'], V.follow.map(f => [`<b>${esc(f.owner || 'To assign')}</b>`, esc(f.what)]))}</section>`;
+  if (V.questions.length) h += `<section><h2>To confirm</h2><ul class="tight">${V.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul></section>`;
+  const seenT = new Set();
+  const read = V.photos.map(p => ({p, x: photoRead(p)})).filter(o => o.x && o.x.relevant !== false && !/history|历程|organisation chart/i.test(o.x.title || '') && !seenT.has(o.x.title) && seenT.add(o.x.title))
+    .map(o => ({...o, f: (o.x.figures || []).filter(f => !rNoise(f))})).filter(o => (['slide', 'spec_sheet', 'nameplate', 'diagram'].includes(o.x.kind) && (o.f.length >= 2 || o.x.diagram)) || o.f.length >= 3);
+  if (read.length) h += `<section><h2>From slides and drawings</h2><ul class="slides tight">${read.map(o => `<li><b>${esc(rClean(o.x.title || ''))}:</b> ${esc([...o.f.slice(0, 5).map(rClean), o.x.diagram ? rClean(o.x.diagram) : ''].filter(Boolean).join('; '))}</li>`).join('')}</ul></section>`;
+  const shown = photoSrc ? V.photos.filter(p => photoSrc[p.uid || p.id] && (photoRead(p) || {}).relevant !== false) : [];
+  if (shown.length) h += `<section><h2>Photos <span class="n">${shown.length}</span></h2><div class="pgrid">${shown.map(p => phFig({p, x: photoRead(p)}, photoSrc)).join('')}</div></section>`;
+  return rDoc2(`${m.name} visit report`, h + `</main>` + rFoot(`Visit report · ${m.name}`));
+}
+/* Which photos the trip / day report needs (so only those are fetched). */
+function scopePhotoNotes(scope){
+  const R = reportScope(scope); return R.ms.filter(m => !visitModel(m.id).empty).flatMap(m => keyPhotos(m.id, 3).map(o => o.p));
+}
+function scopeReportHtml(scope, src){
   const R = reportScope(scope), T = (tripDoc() || {}).trip || null;
   const done = R.ms.filter(m => !visitModel(m.id).empty);
-  const cats = ['Rolling mills', 'Annealing furnaces', 'Roll grinders', 'Oil recovery', 'Plant design'];
-  const catOf = id => (visitCard(id) || {}).category || 'Other suppliers';
-  const isRef = id => (visitCard(id) || {}).kind === 'reference';
+  const kind = id => (visitCard(id) || {}).kind, isRef = id => kind(id) === 'reference';
+  const arrived = m => { const V = visitModel(m.id); return V.ins.length ? V.ins[0].at : new Date(`${m.date}T${m.time.split('–')[0]}:00+08:00`).getTime(); };
   let h = `<header class="cover"><div class="brand"><span>Project Butterfly · ${R.day ? 'Daily report' : 'Trip report'}</span><span class="doc">${R.day ? esc(DAYLABEL[R.day].split(' · ')[0]) : '27–30 Oct 2026'}</span></div>
     <h1>${esc(R.day ? DAYLABEL[R.day] : 'China foil-mill supplier tour')}</h1>
     <div class="sub">${R.day ? esc(R.ms.map(m => m.name).join(' · ')) : 'Sharoon (trip lead) & Naveed (capacity model) · Zhenjiang, Changzhou, Suzhou, Shanghai, Luoyang, Zhuozhou'}</div>
     <div class="cov">${rCoverage(R.ms)}</div></header><main>`;
-  if (!R.day){
-    if (T){
-      h += `<section class="brief1"><h2>The trip on one page</h2>${T.purpose ? `<p class="verdict" style="margin-top:0"><b>Why we went.</b> ${esc((t => t.charAt(0).toUpperCase() + t.slice(1))(T.purpose.replace(/^Purpose:\s*/i, '')))}</p>` : ''}
-        ${(T.basis || []).length ? `<div class="basis"><div class="lab">What we are planning</div><ul>${T.basis.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : ''}
-        ${T.verdict ? `<p class="verdict"><b>Verdict.</b> ${esc(T.verdict)}</p>` : ''}
-        ${T.budget ? `<div class="budget"><div class="lab warn">Cost</div><p style="margin:0">${esc(T.budget)}</p></div>` : ''}
-        ${(() => { const ours = (T.next_steps || []).filter(x => /^(Sharoon|Naveed|Both|Team|Us)$/i.test(x.owner || '')).slice(0, 3);
-          return ours.length ? `<div class="first"><div class="lab ok">First steps</div><ol>${ours.map(x => `<li>${esc(x.what)} <span class="src">· ${esc(x.owner)}</span></li>`).join('')}</ol></div>` : ''; })()}
-        ${(T.shortlist || []).length ? `<h3>Who is in the running</h3>${rTable(['Equipment', 'Options', 'Where it stands'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}` : ''}
-        ${(T.decisions || []).length ? `<h3>Decisions to make</h3>${(() => { const by = T.decisions.some(x => x.by); return rTable(['Decision', 'Options', 'Our leaning', 'Owner'].concat(by ? ['Decide by'] : []), T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'No leaning yet'), esc(x.owner && x.owner !== 'To assign' ? x.owner : 'To agree')].concat(by ? [esc(x.by || 'Not set')] : []))); })()}${T.owners_note ? `<p class="src" style="margin:4px 0 0">${esc(T.owners_note)}</p>` : ''}` : ''}
-        ${(() => { const key = t => t.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 3).join(' ');
-          const ours = /^(Sharoon|Naveed|Both|Team|Us)$/i, them = (T.next_steps || []).filter(x => !ours.test(x.owner || ''));
-          const we = (T.next_steps || []).filter(x => ours.test(x.owner || '')).slice(3);
-          const first = (T.next_steps || []).filter(x => ours.test(x.owner || '')).slice(0, 3), seen = t => [...first, ...we].some(x => { const A = new Set(key(x.what).split(' ')), B = key(t).split(' '); return B.filter(w => A.has(w)).length >= 2; });
-          for (const m of done) for (const f of visitModel(m.id).follow) if (ours.test(f.owner || '') && !seen(f.what) && we.length < 9) we.push({what: `${f.what}. Raised at ${m.name}`.replace(/\.\. /, '. '), owner: f.owner});
-          return (we.length ? `<h3>More steps for us</h3>${rTable(['Step', 'Owner'], we.map(x => [esc(x.what), esc(x.owner)]))}` : '')
-               + (false ? `<h3>Waiting on suppliers</h3>${(() => { const by = them.some(x => x.by || x.chaser); return rTable(['Supplier', 'What we are waiting for'].concat(by ? ['Chased by', 'Expected by'] : []), them.map(x => [`<b>${esc(x.owner || '')}</b>`, esc(x.what)].concat(by ? [esc(x.chaser || 'To agree'), esc(x.by || 'Not set')] : []))); })()}` : ''); })()}</section>`;
-      if (T.money && ((T.money.known || []).length || (T.money.awaiting || []).length))
-        h += `<section><h2>Money and timing</h2><div class="sc2"><div><div class="lab ok">What we have</div><ul>${(T.money.known || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div><div><div class="lab warn">Still waiting for</div><ul>${(T.money.awaiting || []).map(x => `<li>${esc(x)}</li>`).join('')}</ul></div></div></section>`;
-      for (const c of [...cats, 'Other suppliers']){ const ids = done.map(m => m.id).filter(id => !isRef(id) && catOf(id) === c);
-        if (ids.length) h += `<section><h2>${esc(c)}</h2>${ids.map(id => rCard(id, {link: true, compact: true})).join('')}</section>`; }
-      const refs = done.filter(m => isRef(m.id));
-      if ((T.lessons || []).length) h += `<section><h2>What we learned at operating plants</h2><p class="src" style="margin:0 0 6px">${esc(refs.map(m => `${m.name} (${shortDate(m)})`).join(' · '))}</p><ul>${T.lessons.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
-      else if (refs.length) h += `<section><h2>What we learned at operating plants</h2>${refs.map(m => rCard(m.id)).join('')}</section>`;
-      if ((T.open_issues || []).length) h += `<section><h2>Open issues that block decisions</h2>${rTable(['Area', 'Issue'], T.open_issues.map(x => [`<b>${esc(x.area)}</b>`, esc(x.text)]))}</section>`;
-      const textSoFar = h.replace(/<[^>]+>/g, ' ');
-      h += `<div class="appx"><h2 class="ah">Appendix</h2></div>`;
-      if ((T.who || []).length) h += `<section><h2>Who's who</h2>${rTable(['Name', 'Company', 'Role'], T.who.filter(x => !/^(Sharoon|Naveed)$/i.test(x.name)).map(x => [esc(x.name), esc(x.company), esc(x.role)]))}</section>`;
-      h += rGlossary(textSoFar, T.glossary);
-    } else {
-      // no executive summary yet: a short version built from the visit briefs
-      h += `<section><h2>Suppliers</h2>${done.map(m => rCard(m.id, {link: true})).join('')}</section>`;
-    }
+  if (!R.day && T){
+    const sup = done.filter(m => ['supplier', 'design'].includes(kind(m.id))), refs = done.filter(m => isRef(m.id));
+    h += `<section><div class="tiles"><div><b>${done.length}</b><span>visits done</span></div><div><b>${sup.length}</b><span>suppliers met</span></div><div><b>${refs.length}</b><span>plants toured</span></div><div><b>${(T.decisions || []).length}</b><span>decisions open</span></div></div>
+      ${T.purpose ? `<p class="lead"><b>Why.</b> ${esc(T.purpose.replace(/^Purpose:\s*/i, ''))}</p>` : ''}
+      ${T.verdict ? `<p class="lead"><b>Result.</b> ${esc(T.verdict)}</p>` : ''}
+      ${T.budget ? `<div class="cost"><b>Cost</b>${esc(T.budget)}</div>` : ''}<p class="src">Figures marked “to confirm” must be checked with the supplier in writing.</p></section>`;
+    if ((T.basis || []).length) h += `<section><h2>The plan</h2><ul class="tight">${T.basis.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
+    if ((T.shortlist || []).length) h += `<section><h2>Who is in the running</h2>${rTable(['Equipment', 'Options', 'Status'], T.shortlist.map(x => [`<b>${esc(x.category)}</b>`, esc(x.options), esc(x.status)]))}</section>`;
+    const own = (T.decisions || []).some(x => x.owner && x.owner !== 'To assign');
+    if ((T.decisions || []).length) h += `<section><h2>Decisions to make</h2>${rTable(['Decision', 'Options', 'Leaning'].concat(own ? ['Owner'] : []), T.decisions.map(x => [`<b>${esc(x.what)}</b>`, esc(x.options || ''), esc(x.leaning || 'None yet')].concat(own ? [esc(x.owner && x.owner !== 'To assign' ? x.owner : 'To agree')] : [])))}${T.owners_note ? `<p class="src">${esc(T.owners_note)}</p>` : ''}</section>`;
+    const key = t => t.toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter(w => w.length > 3);
+    const we = (T.next_steps || []).filter(x => OURS.test(x.owner || ''));
+    const seen = t => we.some(x => { const A = new Set(key(x.what)); return key(t).filter(w => A.has(w)).length >= 2; });
+    for (const m of done) for (const f of visitModel(m.id).follow) if ((OURS.test(f.owner || '') || /^to assign$/i.test(f.owner || '')) && !seen(f.what) && we.length < 14) we.push({what: `${f.what} (${m.name})`, owner: OURS.test(f.owner || '') ? f.owner : 'To assign'});
+    const wait = ((T.money || {}).awaiting || []).length ? T.money.awaiting : (T.next_steps || []).filter(x => !OURS.test(x.owner || '')).map(x => `${x.owner}: ${x.what}`);
+    h += `<section><h2>Next steps</h2><table class="sm">${we.map(x => `<tr><td style="width:70px"><b>${esc(x.owner)}</b></td><td>${esc(x.what)}</td></tr>`).join('')}</table>
+      <div class="hh" style="margin-top:8px">Waiting on suppliers</div><ul class="tight" style="columns:2;column-gap:18px">${wait.map(x => `<li>${esc(x)}</li>`).join('')}</ul></section>`;
+    if (((T.money || {}).known || []).length) h += `<section><h2>Money and timing (known)</h2><ul class="tight">${T.money.known.map(x => { const i = x.indexOf(':'); return `<li>${i > 0 && i < 60 ? `<b>${esc(x.slice(0, i))}:</b> ${esc(x.slice(i + 1).trim())}` : esc(x)}</li>`; }).join('')}</ul></section>`;
+    const cats = [...new Set(sup.map(m => (visitCard(m.id) || {}).category || 'Other'))];
+    const order = ['Rolling mills', 'Annealing furnaces', 'Roll grinders', 'Oil recovery', 'Plant design']; cats.sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+    for (const c of cats) h += `<section><h2>${esc(c)}</h2>${sup.filter(m => ((visitCard(m.id) || {}).category || 'Other') === c).map(m => rSheet(m.id, src)).join('')}</section>`;
+    if (refs.length || (T.lessons || []).length) h += `<section><h2>Plants toured</h2>${(T.lessons || []).length ? `<ul class="tight" style="margin-bottom:8px">${T.lessons.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}${refs.map(m => rSheet(m.id, src, {photos: 2, brief: (T.lessons || []).length > 0})).join('')}</section>`;
+    if ((T.open_issues || []).length) h += `<section><h2>Open issues</h2>${rTable(['Area', 'Issue'], T.open_issues.map(x => [`<b>${esc(x.area)}</b>`, esc(x.text)]))}</section>`;
+    const textSoFar = h.replace(/<[^>]+>/g, ' ');
+    if ((T.who || []).length) h += `<section><h2>Who's who</h2><table class="sm">${T.who.filter(x => !/^(Sharoon|Naveed)$/i.test(x.name)).map(x => `<tr><td><b>${esc(x.name)}</b></td><td>${esc(x.company)}</td><td>${esc(x.role)}</td></tr>`).join('')}</table></section>`;
+    h += rGloss3(textSoFar, T.glossary);
+  } else if (!R.day){
+    h += `<section>${done.map(m => rSheet(m.id, src)).join('')}</section>`;
   } else {
     const dx = dayExec(R.ms[0].date), db = dayBrief(R.ms[0].date) || {};
     const head = (dx && dx.headline) || rTxt(db.headline || '').replace(/^Day \d+:\s*/, '');
     const hl = (dx && dx.highlights) || (db.highlights || []).map(rTxt);
-    if (head || hl.length) h += `<section class="brief1"><h2>The day in brief</h2>${head ? `<p class="verdict">${esc(head)}</p>` : ''}${hl.length ? `<ul>${hl.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</section>`;
-    const arrived = m => { const V = visitModel(m.id); return V.ins.length ? V.ins[0].at : new Date(`${m.date}T${m.time.split('–')[0]}:00+08:00`).getTime(); };
-    if (done.length) h += `<section><h2>Visits</h2>${done.slice().sort((a, b) => arrived(a) - arrived(b)).map(m => rCard(m.id, {link: true})).join('')}</section>`;
-    const dec = ((db.decisions_needed || []).map(rTxt)).filter(x => x && !rHousekeeping(x)).filter((x, i, a) => a.indexOf(x) === i).slice(0, 6);
-    if (dec.length) h += `<section><h2>Decisions raised today</h2><ol class="q">${dec.map(q => `<li>${esc(q)}</li>`).join('')}</ol></section>`;
-    const acts = done.flatMap(m => visitModel(m.id).follow.map(f => ({...f, sup: m.name}))).slice(0, 10);
-    if (acts.length) h += `<section><h2>Follow-ups from today</h2>${rTable(['Supplier', 'Action', 'Owner'], acts.map(a => [`<b>${esc(a.sup)}</b>`, esc(a.what), esc(a.owner || '')]))}</section>`;
-    if (done.length && T) h += rGlossary(h.replace(/<[^>]+>/g, ' '), (T.glossary || []).filter(g => !/^(Project Butterfly|CNPT|Chinalco|KEZAD)$/.test(g.term)));
-    if (!done.length && !head && !hl.length) h += `<section><h2>Planned visits</h2><ul>${R.ms.map(m => `<li><b>${esc(m.name)}</b>${m.place ? ` · ${esc(m.place)}` : ''}${m.contact ? ` · contact ${esc(m.contact)}` : ''}</li>`).join('')}</ul></section>`;
+    if (head || hl.length) h += `<section>${head ? `<p class="lead"><b>${esc(head)}</b></p>` : ''}${hl.length ? `<ul class="tight">${hl.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</section>`;
+    if (done.length) h += `<section><h2>Visits</h2>${done.slice().sort((a, b) => arrived(a) - arrived(b)).map(m => rSheet(m.id, src)).join('')}</section>`;
+    const dec = ((db.decisions_needed || []).map(rTxt)).filter(x => x && !rHousekeeping(x)).filter((x, i, a) => a.indexOf(x) === i);
+    if (dec.length) h += `<section><h2>Decisions raised</h2><ul class="tight">${dec.map(q => `<li>${esc(q)}</li>`).join('')}</ul></section>`;
+    const acts = done.flatMap(m => visitModel(m.id).follow.map(f => ({...f, sup: m.name})));
+    if (acts.length) h += `<section><h2>Follow-ups</h2>${rTable(['Visit', 'Action', 'Owner'], acts.map(a => [`<b>${esc(a.sup)}</b>`, esc(a.what), esc(a.owner || 'To assign')]))}</section>`;
+    if (!done.length && !head && !hl.length) h += `<section><h2>Planned visits</h2><ul class="tight">${R.ms.map(m => `<li><b>${esc(m.name)}</b>${m.place ? ` · ${esc(m.place)}` : ''}${m.contact ? ` · contact ${esc(m.contact)}` : ''}</li>`).join('')}</ul></section>`;
+    else if (T) h += rGloss3(h.replace(/<[^>]+>/g, ' '), (T.glossary || []).filter(g => !/^(Project Butterfly|CNPT|Chinalco|KEZAD)$/.test(g.term)));
   }
-  return {html: rDoc(R.title, h + `</main>` + rFoot(R.day ? 'Daily report' : 'Trip report')), title: R.title, file: R.file.replace(/\.md$/, '.html'), md: ''};
+  return {html: rDoc2(R.title, h + `</main>` + rFoot(R.day ? 'Daily report' : 'Trip report')), title: R.title, file: R.file.replace(/\.md$/, '.html'), md: ''};
 }
 /* Photos for the visit report: this phone's from storage, the other phone's from the sync repo when online. Downscaled so the file stays light. */
-async function photoDataUrls(id){
-  const out = {}, ps = (noteCache[id] || []).filter(n => n.type === 'photo').slice(0, 24);
+async function photoDataUrls(id, list, px = 1400){
+  const out = {}, ps = list || (noteCache[id] || []).filter(n => n.type === 'photo').slice(0, 30);
   const shrink = blob => new Promise(res => { const u = URL.createObjectURL(blob), img = new Image();
-    img.onload = () => { try { const k = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.78)); } catch(err){ res(null); } URL.revokeObjectURL(u); };
+    img.onload = () => { try { const k = Math.min(1, px / Math.max(img.naturalWidth, img.naturalHeight)); const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); res(c.toDataURL('image/jpeg', 0.78)); } catch(err){ res(null); } URL.revokeObjectURL(u); };
     img.onerror = () => { URL.revokeObjectURL(u); res(null); }; img.src = u; });
   for (const p of ps){
     try {
@@ -1576,8 +1637,13 @@ async function openReport(kind, arg){
   const box = $('#rpt'); box.hidden = false; $('#rpt-title').textContent = r.title; $('#rpt-frame').srcdoc = r.html; document.body.style.overflow = 'hidden';
   if (kind === 'visit' && (noteCache[arg] || []).some(n => n.type === 'photo')){
     $('#rpt-note').textContent = 'Adding photos…';
-    const src = await photoDataUrls(arg); if (rpt !== r) return;
+    const src = await photoDataUrls(arg, null, 900); if (rpt !== r) return;
     r.html = visitReportHtml(arg, src); r.pdf = null; $('#rpt-frame').srcdoc = r.html; $('#rpt-note').textContent = '';
+  }
+  if (kind === 'scope'){ const list = scopePhotoNotes(arg); if (!list.length) return;
+    $('#rpt-note').textContent = 'Adding photos…';
+    const src = await photoDataUrls(null, list, 700); if (rpt !== r) return;
+    Object.assign(r, scopeReportHtml(arg, src)); r.pdf = null; $('#rpt-frame').srcdoc = r.html; $('#rpt-note').textContent = '';
   }
 }
 function closeReport(){ rpt = null; $('#rpt').hidden = true; $('#rpt-frame').srcdoc = ''; $('#rpt-note').textContent = ''; document.body.style.overflow = ''; }
@@ -1624,9 +1690,9 @@ async function buildPdf(r){
     //    and never leave a heading alone at the bottom of a page
     const mm = 10, cw = 210 - 2 * mm, pageCss = Math.floor((297 - 2 * mm - 6) / cw * W);   // CSS px of content per A4 page
     const top = el => el.getBoundingClientRect().top + d.defaultView.scrollY, bot = el => el.getBoundingClientRect().bottom + d.defaultView.scrollY;
-    const atoms = [...d.querySelectorAll('tr, .keep, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
+    const atoms = [...d.querySelectorAll('tr, .keep, .sheet, .tiles, .cost, .pgrid figure, .gl3 > div, .scard .sch, .scard .sc2 > div, .kv2 dt, .kv2 dd, li, p, h1, h2, h3, figure, img, .budget, .basis, .slide, .gaps, .visit, .bluf, footer, .cov, dl.kv > *, .gl dt, .gl dd')]
       .map(el => [top(el), bot(el)]).concat([...d.querySelectorAll('.scard')].map(c => { const h = c.querySelector('.sch'), n = h && h.nextElementSibling; return [top(c) - 2, n ? bot(n) : (h ? bot(h) : top(c) + 40)]; })).filter(([a, b]) => b - a > 0 && b - a < pageCss * 0.9);
-    const heads = [...d.querySelectorAll('h2, h3, .scard .sch, thead')].map(el => [el.matches('.scard .sch') ? top(el.closest('.scard')) - 2 : top(el), bot(el)]);
+    const heads = [...d.querySelectorAll('h2, .hh, .scard .sch, thead')].map(el => [el.matches('.scard .sch') ? top(el.closest('.scard')) - 2 : top(el), bot(el)]);
     const ok = y => !atoms.some(([a, b]) => a < y - 1 && b > y + 1);
     const cuts = [...new Set(atoms.map(([, b]) => Math.ceil(b)).concat(atoms.map(([a]) => Math.floor(a))))].filter(ok).sort((a, b) => a - b);
     // a page that starts inside a table repeats that table's header row
@@ -2169,7 +2235,7 @@ const visitBrief = id => (results[`results/visits/${id}.json`] || {}).brief;
 const dayBrief = date => (results[`results/days/${date}.json`] || {}).brief;
 
 /* ---------- boot ---------- */
-const APP_VERSION = '3.12';
+const APP_VERSION = '3.13';
 function netUI(){ $('#net').classList.toggle('on', navigator.onLine); const t = $('#net-txt'); if (t) t.textContent = navigator.onLine ? 'online' : 'offline'; }
 window.addEventListener('online', netUI); window.addEventListener('offline', netUI); netUI();
 if ('serviceWorker' in navigator){
